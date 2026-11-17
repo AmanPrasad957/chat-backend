@@ -1,0 +1,71 @@
+"""Async MongoDB client and lifecycle management using Motor."""
+
+import os
+import logging
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo import ASCENDING
+
+logger = logging.getLogger("ai_chat_api.mongodb")
+
+client: AsyncIOMotorClient | None = None
+database: AsyncIOMotorDatabase | None = None
+
+
+async def connect_to_mongo() -> None:
+    """Initialize MongoDB connection pool and verify connection with ping."""
+    global client, database
+    mongo_url = os.getenv("MONGODB_URL", "mongodb://127.0.0.1:27017")
+    db_name = os.getenv("MONGODB_DB_NAME", "chat_db")
+
+    logger.info("Connecting to MongoDB at %s (db: %s)...", mongo_url, db_name)
+    try:
+        client = AsyncIOMotorClient(
+            mongo_url,
+            serverSelectionTimeoutMS=3000,
+            connectTimeoutMS=3000,
+        )
+        # Verify connection
+        await client.admin.command("ping")
+        database = client[db_name]
+        logger.info("Successfully connected to MongoDB (%s)", db_name)
+
+        # Setup indexes for users collection
+        await database.users.create_index([("email", ASCENDING)], unique=True)
+
+        # Setup indexes for refresh_tokens collection
+        await database.refresh_tokens.create_index([("token", ASCENDING)], unique=True)
+        await database.refresh_tokens.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
+        logger.info("MongoDB indexes verified for 'users' and 'refresh_tokens'")
+
+    except Exception as exc:
+        logger.error("Failed to connect to MongoDB: %s", exc)
+        database = None
+
+
+async def close_mongo_connection() -> None:
+    """Close MongoDB connection pool."""
+    global client, database
+    if client is not None:
+        logger.info("Closing MongoDB connection...")
+        client.close()
+        client = None
+        database = None
+        logger.info("MongoDB connection closed.")
+
+
+def get_database() -> AsyncIOMotorDatabase:
+    """Dependency helper to get the active database instance."""
+    if database is None:
+        raise RuntimeError("MongoDB is not connected. Verify your local MongoDB service is running.")
+    return database
+
+
+async def check_mongo_health() -> bool:
+    """Check if MongoDB server is reachable."""
+    if client is None:
+        return False
+    try:
+        await client.admin.command("ping")
+        return True
+    except Exception:
+        return False

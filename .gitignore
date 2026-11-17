@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables & secrets (keep .env.example)
+.env
+.env.local
+.env.*.local
+*.env
+
+# ChromaDB & Vector Store persistent local data
+chroma_data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs & temporary files
+*.log
+logs/
+*.tmp
+*.bak
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+
+# IDE & Editor specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*

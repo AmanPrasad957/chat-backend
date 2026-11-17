@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel - Chat Interface</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
+    .message-group:hover .msg-delete-btn {
+      opacity: 1;
+      visibility: visible;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col md:flex-row antialiased select-none md:select-auto">
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside class="w-full md:w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col justify-between py-6 px-4">
+    <div>
+      <!-- Brand Logo & Name -->
+      <div class="flex items-center gap-3 px-3 mb-6">
+        <div class="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12h2.5l2.5-6 4 12 4-12 2.5 6H22"/>
+          </svg>
+        </div>
+        <span class="text-xl font-bold tracking-tight text-emerald-800">Admin Panel</span>
+      </div>
+
+      <!-- Main Navigation -->
+      <nav class="space-y-1 mb-6">
+        <a href="#intents" class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium text-sm">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+          Intents
+        </a>
+
+        <a href="#entities" class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium text-sm">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          Entities
+        </a>
+
+        <!-- Active Chat Item -->
+        <a href="#chat" class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-800 font-semibold text-sm shadow-sm">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          Chat
+        </a>
+
+        <a href="#logs" class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium text-sm">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Logs
+        </a>
+      </nav>
+
+      <!-- Active Conversations Section with Delete Controls -->
+      <div class="mb-6">
+        <div class="px-3 mb-2 flex items-center justify-between">
+          <span class="text-xs font-semibold tracking-wider text-emerald-700/80 uppercase">Active Chats</span>
+          <button onclick="createNewChat()" class="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 hover:underline cursor-pointer" title="Create a new chat conversation">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            New Chat
+          </button>
+        </div>
+        <div id="thread-list" class="space-y-1 max-h-36 overflow-y-auto custom-scrollbar px-1">
+          <!-- Dynamically populated thread items -->
+        </div>
+      </div>
+
+      <!-- Settings Section -->
+      <div class="px-3 mb-2 text-xs font-semibold tracking-wider text-emerald-700/80 uppercase">Settings</div>
+      <nav class="space-y-1">
+        <a href="#ml" class="flex items-center gap-3.5 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium text-sm">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          ML Settings
+        </a>
+
+        <button onclick="openKnowledgeModal()" class="w-full text-left flex items-center gap-3.5 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium text-sm cursor-pointer">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+          Data Management
+          <span class="ml-auto text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">RAG</span>
+        </button>
+
+        <a href="#integrations" class="flex items-center gap-3.5 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium text-sm">
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+          Integrations
+        </a>
+      </nav>
+    </div>
+
+    <!-- Provider & Status -->
+    <div class="pt-4 border-t border-slate-100 px-3 space-y-2">
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <span class="font-medium">Backend Engine</span>
+        <span id="provider-badge" class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold uppercase text-[10px]">Google Gemini</span>
+      </div>
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <span class="font-medium">Vector Store</span>
+        <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold uppercase text-[10px]">ChromaDB</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-emerald-600 font-medium pt-1">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Live at :8000</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN WORKSPACE AREA ================= -->
+  <main class="flex-1 flex flex-col p-6 md:p-8 overflow-y-auto">
+
+    <!-- Top Header -->
+    <header class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Chat Interface</h1>
+          <span id="active-chat-badge" class="px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono font-medium">
+            test-user
+          </span>
+        </div>
+        <p class="text-slate-500 text-sm mt-1">Test your chatbot's responses in real-time</p>
+      </div>
+      <div class="flex items-center gap-2.5">
+        
+        <!-- Delete Current Chat Button -->
+        <button id="btn-delete-chat" onclick="deleteCurrentChat()" class="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/80 hover:bg-red-100 text-red-700 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Delete this particular chat">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          Delete Chat
+        </button>
+
+        <!-- New / Reset Chat Button -->
+        <button id="btn-reset" onclick="resetChat()" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 bg-white text-slate-700 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Reset this conversation">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Reset Session
+        </button>
+        
+        <a href="/docs" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5">
+          <span>Docs</span>
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Two Column Grid: Left Chat Panel & Right State Inspector -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start">
+
+      <!-- ================= MIDDLE CHAT INTERFACE ================= -->
+      <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col h-[700px] overflow-hidden">
+        
+        <!-- Conversation Stream -->
+        <div id="chat-messages" class="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
+          <!-- Initial welcome messages -->
+        </div>
+
+        <!-- Quick Test Chips -->
+        <div class="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Quick Prompts:</span>
+          <button onclick="sendQuick('can you help to find the status of my order')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+            📦 "find the status of my order"
+          </button>
+          <button onclick="sendQuick('it\'s ORD987124')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+            🔑 "it's ORD987124"
+          </button>
+          <button onclick="sendQuick('What is your return policy and refund window?')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+            📚 "Return Policy"
+          </button>
+          <button onclick="sendQuick('How long does standard shipping take?')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+            🚚 "Shipping Timeline"
+          </button>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="p-4 bg-white border-t border-slate-200">
+          <form id="chat-form" onsubmit="handleSend(event)" class="flex items-center gap-3">
+            <input
+              id="message-input"
+              type="text"
+              autocomplete="off"
+              placeholder="Type your message here"
+              class="flex-1 bg-white border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-sm rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition"
+            />
+            <button
+              type="submit"
+              id="send-button"
+              class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm px-6 py-3 rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer"
+            >
+              <span>Send</span>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+
+      </section>
+
+      <!-- ================= RIGHT COLUMN: CURRENT STATE ================= -->
+      <section class="lg:col-span-5 flex flex-col h-[700px]">
+        
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm flex-1 flex flex-col overflow-hidden">
+          
+          <!-- State Header -->
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+            <div class="flex items-center gap-2.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+              <h2 class="text-base font-bold text-slate-900 tracking-tight">Current State</h2>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <span id="intent-tag" class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                intent: greeting
+              </span>
+              <button onclick="copyState()" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition" title="Copy JSON state">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- JSON State Viewer matching screenshot -->
+          <div class="flex-1 p-5 overflow-auto custom-scrollbar bg-slate-50/70 font-mono text-xs text-slate-800">
+            <pre id="state-json" class="whitespace-pre leading-relaxed select-text font-mono text-[12px] text-slate-800"></pre>
+          </div>
+
+          <!-- Bottom Footer Details -->
+          <div class="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 px-5">
+            <div>Thread: <span class="font-semibold text-slate-700" id="current-thread">test-user</span></div>
+            <div>Channel: <span class="font-semibold text-slate-700">rest</span></div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ================= CLIENT JAVASCRIPT ================= -->
+  <script>
+    let currentThreadId = "test-user";
+    const username = "Admin";
+    let activeThreads = [
+      { thread_id: "test-user", title: "Order Status & General Support" }
+    ];
+
+    // Initial state matching the loaded UI state
+    let currentState = {
+      "thread_id": "test-user",
+      "user_message": {
+        "thread_id": "test-user",
+        "text": "",
+        "channel": "rest",
+        "context": {}
+      },
+      "bot_message": [
+        { "text": "Hi Admin" },
+        { "text": "What can i do for you ?" }
+      ],
+      "nlu": {
+        "entities": {},
+        "intent": {
+          "intent": "greeting",
+          "confidence": 0.985
+        }
+      },
+      "context": {
+        "result": {},
+        "username": "Admin"
+      }
+    };
+
+    function updateStateView(state) {
+      currentState = state;
+      const stateEl = document.getElementById("state-json");
+      stateEl.textContent = JSON.stringify(state, null, 2);
+
+      const intentTag = document.getElementById("intent-tag");
+      if (state.nlu && state.nlu.intent) {
+        const confPercent = Math.round((state.nlu.intent.confidence || 0) * 100);
+        intentTag.textContent = `${state.nlu.intent.intent} (${confPercent}%)`;
+      }
+      document.getElementById("current-thread").textContent = state.thread_id || currentThreadId;
+      document.getElementById("active-chat-badge").textContent = state.thread_id || currentThreadId;
+    }
+
+    function renderThreadList() {
+      const container = document.getElementById("thread-list");
+      container.innerHTML = "";
+
+      activeThreads.forEach(t => {
+        const isActive = t.thread_id === currentThreadId;
+        const item = document.createElement("div");
+        item.className = `group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition ${
+          isActive ? "bg-emerald-100/70 text-emerald-900 font-semibold" : "text-slate-600 hover:bg-slate-100"
+        }`;
+
+        item.innerHTML = `
+          <div class="truncate flex-1 pr-1.5" onclick="switchChat('${t.thread_id}')">
+            ${t.title || t.thread_id}
+          </div>
+          <button onclick="deleteParticularChat('${t.thread_id}', event)" class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 rounded transition cursor-pointer" title="Delete this chat">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function appendMessage(text, isUser = false, index = null) {
+      const container = document.getElementById("chat-messages");
+      const wrapper = document.createElement("div");
+      wrapper.className = isUser
+        ? "message-group relative flex items-center justify-end gap-2 ml-auto max-w-[85%]"
+        : "message-group relative flex items-center justify-start gap-2 max-w-[85%]";
+
+      const bubble = document.createElement("div");
+      if (isUser) {
+        bubble.className = "bg-blue-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm leading-relaxed shadow-sm";
+        bubble.textContent = text;
+      } else {
+        bubble.className = "bg-slate-100 text-slate-800 text-sm px-4 py-2.5 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm";
+        bubble.innerHTML = text;
+      }
+
+      // Delete button for this particular message
+      const delBtn = document.createElement("button");
+      delBtn.className = "msg-delete-btn opacity-0 transition p-1 text-slate-400 hover:text-red-500 rounded-md hover:bg-slate-100 cursor-pointer";
+      delBtn.title = "Delete this message";
+      delBtn.innerHTML = `
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      `;
+      delBtn.onclick = () => deleteParticularMessage(wrapper, index);
+
+      if (isUser) {
+        wrapper.appendChild(delBtn);
+        wrapper.appendChild(bubble);
+      } else {
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(delBtn);
+      }
+
+      container.appendChild(wrapper);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function deleteParticularMessage(element, index) {
+      if (index !== null) {
+        try {
+          await fetch(`/chat/${currentThreadId}/message/${index}`, { method: "DELETE" });
+        } catch (e) {
+          console.warn("Failed to delete message on backend", e);
+        }
+      }
+      element.remove();
+    }
+
+    async function deleteParticularChat(threadId, event) {
+      if (event) event.stopPropagation();
+      
+      try {
+        await fetch(`/chat/threads/${threadId}`, { method: "DELETE" });
+      } catch (e) {
+        console.warn("Error deleting chat thread:", e);
+      }
+
+      activeThreads = activeThreads.filter(t => t.thread_id !== threadId);
+      
+      // If we deleted the active chat, switch to remaining or create new
+      if (currentThreadId === threadId) {
+        if (activeThreads.length > 0) {
+          switchChat(activeThreads[0].thread_id);
+        } else {
+          createNewChat();
+        }
+      } else {
+        renderThreadList();
+      }
+    }
+
+    function deleteCurrentChat() {
+      deleteParticularChat(currentThreadId);
+    }
+
+    function createNewChat() {
+      const newId = "chat-" + Date.now().toString(36);
+      currentThreadId = newId;
+      activeThreads.unshift({
+        thread_id: newId,
+        title: "New Conversation"
+      });
+      initChatUI();
+      renderThreadList();
+    }
+
+    async function switchChat(threadId) {
+      currentThreadId = threadId;
+      renderThreadList();
+
+      try {
+        const res = await fetch(`/chat/state/${threadId}`);
+        if (res.ok) {
+          const state = await res.json();
+          renderLoadedConversation(state);
+          return;
+        }
+      } catch (e) {
+        console.warn("Failed to load thread state", e);
+      }
+      initChatUI();
+    }
+
+    function renderLoadedConversation(state) {
+      const container = document.getElementById("chat-messages");
+      container.innerHTML = "";
+      const history = state.history || [];
+
+      if (history.length === 0) {
+        initChatUI();
+        return;
+      }
+
+      history.forEach((turn, idx) => {
+        if (turn.user) appendMessage(turn.user, true, idx);
+        if (turn.bot) {
+          const msgs = Array.isArray(turn.bot) ? turn.bot : [turn.bot];
+          msgs.forEach(m => appendMessage(m, false, idx));
+        }
+      });
+
+      updateStateView({
+        thread_id: currentThreadId,
+        user_message: { thread_id: currentThreadId, text: history[history.length - 1].user || "", channel: "rest", context: state.context || {} },
+        bot_message: Array.isArray(history[history.length - 1].bot) ? history[history.length - 1].bot.map(t => ({ text: t })) : [{ text: String(history[history.length - 1].bot || "") }],
+        nlu: { entities: {}, intent: { intent: "loaded_conversation", confidence: 1.0 } },
+        context: state.context || {}
+      });
+    }
+
+    function initChatUI() {
+      const container = document.getElementById("chat-messages");
+      container.innerHTML = `
+        <div class="message-group relative flex items-center justify-start gap-2 max-w-[85%]">
+          <div class="bg-slate-100 text-slate-800 text-sm px-4 py-2.5 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm">
+            Hi Admin
+          </div>
+        </div>
+        <div class="message-group relative flex items-center justify-start gap-2 max-w-[85%]">
+          <div class="bg-slate-100 text-slate-800 text-sm px-4 py-2.5 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm">
+            What can i do for you ?
+          </div>
+        </div>
+      `;
+
+      updateStateView({
+        "thread_id": currentThreadId,
+        "user_message": { "thread_id": currentThreadId, "text": "", "channel": "rest", "context": {} },
+        "bot_message": [{ "text": "Hi Admin" }, { "text": "What can i do for you ?" }],
+        "nlu": { "entities": {}, "intent": { "intent": "greeting", "confidence": 0.985 } },
+        "context": { "result": {}, "username": "Admin" }
+      });
+    }
+
+    function showTypingIndicator() {
+      const container = document.getElementById("chat-messages");
+      const id = "typing-indicator";
+      if (document.getElementById(id)) return;
+
+      const wrapper = document.createElement("div");
+      wrapper.id = id;
+      wrapper.className = "flex items-center gap-1.5 bg-slate-100 px-4 py-3 rounded-2xl rounded-tl-sm w-fit";
+      wrapper.innerHTML = `
+        <div class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 0ms"></div>
+        <div class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 150ms"></div>
+        <div class="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style="animation-delay: 300ms"></div>
+      `;
+      container.appendChild(wrapper);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById("typing-indicator");
+      if (el) el.remove();
+    }
+
+    async function sendMessage(text) {
+      if (!text || !text.trim()) return;
+      const cleanText = text.trim();
+
+      // Append user bubble
+      appendMessage(cleanText, true);
+      showTypingIndicator();
+
+      // Update thread title if new
+      const currentObj = activeThreads.find(t => t.thread_id === currentThreadId);
+      if (currentObj && (!currentObj.title || currentObj.title === "New Conversation")) {
+        currentObj.title = cleanText.length > 25 ? cleanText.substring(0, 25) + "..." : cleanText;
+        renderThreadList();
+      }
+
+      const payload = {
+        text: cleanText,
+        thread_id: currentThreadId,
+        channel: "rest",
+        context: { username: username }
+      };
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        removeTypingIndicator();
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Render bot responses
+        if (data.bot_message && Array.isArray(data.bot_message)) {
+          data.bot_message.forEach(msg => {
+            appendMessage(msg.text || "", false);
+          });
+        }
+
+        // Update JSON state view
+        updateStateView(data);
+
+      } catch (err) {
+        removeTypingIndicator();
+        appendMessage(`<span class="text-red-500 font-medium">Error: Could not reach chatbot API (${err.message}).</span>`, false);
+        console.error("Chat request failed:", err);
+      }
+    }
+
+    function handleSend(event) {
+      event.preventDefault();
+      const input = document.getElementById("message-input");
+      const text = input.value;
+      if (!text) return;
+      input.value = "";
+      sendMessage(text);
+    }
+
+    function sendQuick(text) {
+      sendMessage(text);
+    }
+
+    async function resetChat() {
+      try {
+        await fetch(`/chat/state/${currentThreadId}`, { method: "DELETE" });
+      } catch (e) {
+        console.warn("Reset endpoint call failed", e);
+      }
+      initChatUI();
+    }
+
+    function copyState() {
+      navigator.clipboard.writeText(JSON.stringify(currentState, null, 2)).then(() => {
+        const tag = document.getElementById("intent-tag");
+        const prev = tag.textContent;
+        tag.textContent = "Copied to Clipboard!";
+        setTimeout(() => { tag.textContent = prev; }, 1500);
+      });
+    }
+
+    // ================= CHROMADB KNOWLEDGE BASE MODAL =================
+    async function openKnowledgeModal() {
+      const modal = document.getElementById("kb-modal");
+      modal.classList.remove("hidden");
+      await loadKnowledgeDocuments();
+    }
+
+    function closeKnowledgeModal() {
+      const modal = document.getElementById("kb-modal");
+      modal.classList.add("hidden");
+    }
+
+    async function loadKnowledgeDocuments() {
+      const container = document.getElementById("kb-doc-list");
+      container.innerHTML = '<div class="text-xs text-slate-500 py-4 text-center">Loading ChromaDB documents...</div>';
+
+      try {
+        const res = await fetch("/knowledge");
+        const data = await res.json();
+        const docs = data.documents || [];
+        
+        document.getElementById("kb-count-badge").textContent = `${docs.length} documents`;
+
+        if (docs.length === 0) {
+          container.innerHTML = '<div class="text-xs text-slate-400 py-6 text-center">No documents in ChromaDB collection yet.</div>';
+          return;
+        }
+
+        container.innerHTML = "";
+        docs.forEach(doc => {
+          const item = document.createElement("div");
+          item.className = "p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-3";
+          item.innerHTML = `
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-bold text-slate-800">${doc.metadata?.title || doc.id}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold uppercase">${doc.metadata?.category || "general"}</span>
+                <span class="text-[10px] text-slate-400">${doc.metadata?.source || ""}</span>
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">${doc.text}</p>
+            </div>
+            <button onclick="deleteKnowledgeDoc('${doc.id}')" class="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-200 transition" title="Delete document">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          `;
+          container.appendChild(item);
+        });
+
+      } catch (e) {
+        container.innerHTML = `<div class="text-xs text-red-500 py-4 text-center">Failed to load ChromaDB documents: ${e.message}</div>`;
+      }
+    }
+
+    async function handleAddKnowledge(event) {
+      event.preventDefault();
+      const textInput = document.getElementById("kb-text-input");
+      const titleInput = document.getElementById("kb-title-input");
+      const catInput = document.getElementById("kb-cat-input");
+      
+      const text = textInput.value.trim();
+      if (!text) return;
+
+      const payload = {
+        text: text,
+        title: titleInput.value.trim() || "User Document",
+        category: catInput.value.trim() || "custom",
+        source: "admin_ui_upload"
+      };
+
+      try {
+        const res = await fetch("/knowledge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          textInput.value = "";
+          titleInput.value = "";
+          await loadKnowledgeDocuments();
+        }
+      } catch (e) {
+        alert("Failed to add document to ChromaDB: " + e.message);
+      }
+    }
+
+    async function deleteKnowledgeDoc(docId) {
+      if (!confirm("Delete this document from ChromaDB vector store?")) return;
+      try {
+        const res = await fetch(`/knowledge/${docId}`, { method: "DELETE" });
+        if (res.ok) {
+          await loadKnowledgeDocuments();
+        }
+      } catch (e) {
+        alert("Failed to delete document: " + e.message);
+      }
+    }
+
+    // Initialize page
+    initChatUI();
+    renderThreadList();
+  </script>
+
+  <!-- ================= CHROMADB KNOWLEDGE BASE MODAL ================= -->
+  <div id="kb-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">ChromaDB Vector Store</h3>
+            <p class="text-xs text-slate-500">Knowledge Base & Retrieval-Augmented Generation (RAG)</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="kb-count-badge" class="text-xs bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full border border-blue-200">
+            4 documents
+          </span>
+          <button onclick="closeKnowledgeModal()" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+        <!-- Add Document Form -->
+        <form onsubmit="handleAddKnowledge(event)" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Add Document to Vector Store</span>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="kb-title-input" type="text" placeholder="Title (e.g. VIP Warranty)" class="text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 outline-none focus:border-emerald-500" />
+            <input id="kb-cat-input" type="text" placeholder="Category (e.g. warranty)" class="text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 outline-none focus:border-emerald-500" />
+          </div>
+          <textarea id="kb-text-input" rows="2" placeholder="Document content to embed into ChromaDB..." class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 outline-none focus:border-emerald-500"></textarea>
+          <div class="flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-xs cursor-pointer">
+              Index into ChromaDB
+            </button>
+          </div>
+        </form>
+
+        <!-- Document List -->
+        <div>
+          <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">Indexed Documents</span>
+          <div id="kb-doc-list" class="space-y-2"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
