@@ -3,20 +3,14 @@
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from app.services.chroma_service import ChromaService
+from app.config.chromadb import ChromaService, get_chroma_db
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Base (ChromaDB)"])
-
-# Singleton ChromaService dependency
-_chroma_instance: Optional[ChromaService] = None
 
 
 def get_chroma_service() -> ChromaService:
     """Dependency provider for ChromaService instance."""
-    global _chroma_instance
-    if _chroma_instance is None:
-        _chroma_instance = ChromaService()
-    return _chroma_instance
+    return get_chroma_db()
 
 
 class DocumentItem(BaseModel):

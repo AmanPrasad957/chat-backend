@@ -25,18 +25,19 @@ Production-ready conversational AI backend powered by **FastAPI**, **Google Gemi
 chat-backend/
 ├── app/
 │   ├── main.py                  # FastAPI application entrypoint, CORS, and lifespans
-│   ├── db/
-│   │   └── mongodb.py           # Async Motor client, connection pool, and indexes
+│   ├── config/                  # Consolidated Database Connections
+│   │   ├── __init__.py
+│   │   ├── mongodb.py           # Async Motor client, connection pool, and indexes
+│   │   └── chromadb.py          # Persistent ChromaDB client, collection, and query
 │   ├── routes/
 │   │   ├── auth.py              # Register, login, refresh, logout, /me
 │   │   ├── chat.py              # Chat, threads, messages, and state
 │   │   └── knowledge.py         # ChromaDB documents and semantic query
 │   ├── controllers/
 │   │   └── chat_controller.py   # Request orchestration and response modeling
-│   ├── services/
+│   ├── services/                # Pure Business Logic
 │   │   ├── auth_service.py      # Password hashing, JWT token creation/verification
-│   │   ├── llm_service.py       # Google Gemini LLM and RAG prompt injection
-│   │   └── chroma_service.py    # Persistent ChromaDB vector store
+│   │   └── llm_service.py       # Google Gemini LLM and RAG prompt injection
 │   └── schemas/
 │       ├── auth_schema.py       # Pydantic auth and token models
 │       └── chat_schema.py       # Pydantic request and state models

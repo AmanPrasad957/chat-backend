@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from app.db.mongodb import connect_to_mongo, close_mongo_connection, check_mongo_health
+from app.config.mongodb import connect_to_mongo, close_mongo_connection, check_mongo_health
 from app.routes.chat import router as chat_router
 from app.routes.knowledge import router as knowledge_router
 from app.routes.auth import router as auth_router

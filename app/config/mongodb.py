@@ -1,14 +1,15 @@
-"""Async MongoDB client and lifecycle management using Motor."""
+"""MongoDB database connection configuration and client lifecycle."""
 
 import os
 import logging
+from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING
 
-logger = logging.getLogger("ai_chat_api.mongodb")
+logger = logging.getLogger("ai_chat_api.config.mongodb")
 
-client: AsyncIOMotorClient | None = None
-database: AsyncIOMotorDatabase | None = None
+client: Optional[AsyncIOMotorClient] = None
+database: Optional[AsyncIOMotorDatabase] = None
 
 
 async def connect_to_mongo() -> None:
@@ -27,12 +28,12 @@ async def connect_to_mongo() -> None:
         # Verify connection
         await client.admin.command("ping")
         database = client[db_name]
-        logger.info("Successfully connected to MongoDB (%s)", db_name)
+        logger.info("Successfully connected to MongoDB database '%s'", db_name)
 
-        # Setup indexes for users collection
+        # Setup unique index on email for users collection
         await database.users.create_index([("email", ASCENDING)], unique=True)
 
-        # Setup indexes for refresh_tokens collection
+        # Setup indexes on token and TTL expiry for refresh_tokens collection
         await database.refresh_tokens.create_index([("token", ASCENDING)], unique=True)
         await database.refresh_tokens.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
         logger.info("MongoDB indexes verified for 'users' and 'refresh_tokens'")
@@ -54,9 +55,9 @@ async def close_mongo_connection() -> None:
 
 
 def get_database() -> AsyncIOMotorDatabase:
-    """Dependency helper to get the active database instance."""
+    """Dependency helper to get the active MongoDB database instance."""
     if database is None:
-        raise RuntimeError("MongoDB is not connected. Verify your local MongoDB service is running.")
+        raise RuntimeError("MongoDB is not connected. Verify your local MongoDB service is running on mongodb://127.0.0.1:27017.")
     return database
 
 

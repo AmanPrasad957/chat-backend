@@ -1,4 +1,4 @@
-"""ChromaDB Vector Store service providing Retrieval-Augmented Generation (RAG) and semantic search."""
+"""ChromaDB Vector Store database connection and collection configuration."""
 
 import os
 import uuid
@@ -10,14 +10,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logger = logging.getLogger("ai_chat_api.chroma_service")
+logger = logging.getLogger("ai_chat_api.config.chromadb")
 
-# Base directory for persistent ChromaDB storage
+# Base directory for persistent ChromaDB vector storage
 DEFAULT_PERSIST_DIR = str(Path(__file__).resolve().parent.parent.parent / "chroma_data")
+
+_chroma_instance: Optional["ChromaService"] = None
 
 
 class ChromaService:
-    """Service wrapper for ChromaDB persistent vector database."""
+    """Connection manager and query client for ChromaDB persistent vector database."""
 
     def __init__(
         self,
@@ -26,15 +28,15 @@ class ChromaService:
     ) -> None:
         self.persist_directory = persist_directory or os.getenv("CHROMA_PERSIST_DIRECTORY", DEFAULT_PERSIST_DIR)
         self.collection_name = collection_name or os.getenv("CHROMA_COLLECTION_NAME", "knowledge_base")
-        
+
         # Ensure persist directory exists
         Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
-        
+
         # Initialize ChromaDB persistent client
         self.client = chromadb.PersistentClient(path=self.persist_directory)
         self.collection = self.client.get_or_create_collection(name=self.collection_name)
         logger.info(
-            "ChromaDB initialized at '%s' with collection '%s'. Existing document count: %d",
+            "ChromaDB connected at '%s' with collection '%s'. Existing document count: %d",
             self.persist_directory,
             self.collection_name,
             self.collection.count(),
@@ -45,7 +47,7 @@ class ChromaService:
             self.seed_default_knowledge()
 
     def seed_default_knowledge(self) -> None:
-        """Seed default knowledge base articles for zero-config RAG testing."""
+        """Seed default knowledge base documents for out-of-the-box RAG testing."""
         default_docs = [
             {
                 "id": "kb_shipping_01",
@@ -107,7 +109,6 @@ class ChromaService:
         if not query_text or self.collection.count() == 0:
             return []
 
-        # Cap n_results to current collection count
         actual_k = min(n_results, self.collection.count())
         if actual_k <= 0:
             return []
@@ -126,7 +127,6 @@ class ChromaService:
                 dists = results["distances"][0] if results.get("distances") else [0.0] * len(docs)
 
                 for doc, meta, doc_id, dist in zip(docs, metas, ids, dists):
-                    # Filter by distance threshold if desired (lower distance = higher similarity)
                     if dist <= threshold:
                         hits.append({
                             "id": doc_id,
@@ -176,3 +176,11 @@ class ChromaService:
             "persist_directory": self.persist_directory,
             "total_documents": self.collection.count(),
         }
+
+
+def get_chroma_db() -> ChromaService:
+    """Singleton getter for ChromaDB connection instance."""
+    global _chroma_instance
+    if _chroma_instance is None:
+        _chroma_instance = ChromaService()
+    return _chroma_instance

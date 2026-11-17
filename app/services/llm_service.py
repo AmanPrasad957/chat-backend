@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
-from app.services.chroma_service import ChromaService
+from app.config.chromadb import ChromaService
 
 load_dotenv()
 

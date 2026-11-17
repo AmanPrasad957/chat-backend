@@ -11,7 +11,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.db.mongodb import get_database
+from app.config.mongodb import get_database
 from app.schemas.auth_schema import (
     UserRegisterRequest,
     UserLoginRequest,
