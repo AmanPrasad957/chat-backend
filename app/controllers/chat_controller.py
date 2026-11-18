@@ -1,7 +1,7 @@
-"""Chat controller orchestrating request parsing, LLM service interactions, and response formatting."""
+"""Chat controller orchestrating request parsing, LLM service interactions, and MongoDB persistence."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from app.schemas.chat_schema import (
     BotMessageItem,
     ChatRequest,
@@ -21,7 +21,7 @@ class ChatController:
     def __init__(self, llm_service: LLMService | None = None) -> None:
         self.llm_service = llm_service or LLMService()
 
-    async def handle_message(self, request: ChatRequest) -> ChatResponse:
+    async def handle_message(self, request: ChatRequest, user_id: Optional[str] = None) -> ChatResponse:
         """Process an incoming chat message and return state response matching the admin interface."""
         text = request.text or ""
         thread_id = request.thread_id or "test-user"
@@ -36,6 +36,7 @@ class ChatController:
                 user_text=text,
                 channel=channel,
                 context=context,
+                user_id=user_id,
             )
         )
 
@@ -66,30 +67,30 @@ class ChatController:
 
         return response
 
-    def get_thread_state(self, thread_id: str) -> Dict[str, Any]:
-        """Fetch current thread state and context."""
-        return self.llm_service.get_thread_state(thread_id)
+    async def get_thread_state(self, thread_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Fetch current thread state and context from MongoDB."""
+        return await self.llm_service.get_thread_state(thread_id, user_id)
 
-    def list_threads(self) -> List[Dict[str, Any]]:
-        """List all active chat threads."""
-        return self.llm_service.list_all_threads()
+    async def list_threads(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List all active chat threads from MongoDB."""
+        return await self.llm_service.list_all_threads(user_id)
 
-    def reset_thread(self, thread_id: str) -> Dict[str, Any]:
+    async def reset_thread(self, thread_id: str) -> Dict[str, Any]:
         """Reset conversation memory for a thread."""
-        return self.delete_thread(thread_id)
+        return await self.delete_thread(thread_id)
 
-    def delete_thread(self, thread_id: str) -> Dict[str, Any]:
-        """Delete a particular conversation thread."""
-        cleared = self.llm_service.clear_thread_state(thread_id)
+    async def delete_thread(self, thread_id: str) -> Dict[str, Any]:
+        """Delete a particular conversation thread from MongoDB."""
+        cleared = await self.llm_service.clear_thread_state(thread_id)
         return {
             "thread_id": thread_id,
             "status": "deleted" if cleared else "not_found",
             "message": f"Chat thread '{thread_id}' has been deleted.",
         }
 
-    def delete_message(self, thread_id: str, message_index: int) -> Dict[str, Any]:
-        """Delete a particular message from a chat thread."""
-        success = self.llm_service.delete_message(thread_id, message_index)
+    async def delete_message(self, thread_id: str, message_index: int) -> Dict[str, Any]:
+        """Delete a particular message from a chat thread in MongoDB."""
+        success = await self.llm_service.delete_message(thread_id, message_index)
         return {
             "thread_id": thread_id,
             "message_index": message_index,

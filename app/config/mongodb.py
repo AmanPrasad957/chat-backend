@@ -1,4 +1,3 @@
-"""MongoDB database connection configuration and client lifecycle."""
 
 import os
 import logging
@@ -36,7 +35,11 @@ async def connect_to_mongo() -> None:
         # Setup indexes on token and TTL expiry for refresh_tokens collection
         await database.refresh_tokens.create_index([("token", ASCENDING)], unique=True)
         await database.refresh_tokens.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
-        logger.info("MongoDB indexes verified for 'users' and 'refresh_tokens'")
+
+        # Setup indexes for conversations collection
+        await database.conversations.create_index([("thread_id", ASCENDING)], unique=True)
+        await database.conversations.create_index([("user_id", ASCENDING), ("updated_at", -1)])
+        logger.info("MongoDB indexes verified for 'users', 'refresh_tokens', and 'conversations'")
 
     except Exception as exc:
         logger.error("Failed to connect to MongoDB: %s", exc)
@@ -44,7 +47,6 @@ async def connect_to_mongo() -> None:
 
 
 async def close_mongo_connection() -> None:
-    """Close MongoDB connection pool."""
     global client, database
     if client is not None:
         logger.info("Closing MongoDB connection...")
@@ -55,14 +57,12 @@ async def close_mongo_connection() -> None:
 
 
 def get_database() -> AsyncIOMotorDatabase:
-    """Dependency helper to get the active MongoDB database instance."""
     if database is None:
         raise RuntimeError("MongoDB is not connected. Verify your local MongoDB service is running on mongodb://127.0.0.1:27017.")
     return database
 
 
 async def check_mongo_health() -> bool:
-    """Check if MongoDB server is reachable."""
     if client is None:
         return False
     try:

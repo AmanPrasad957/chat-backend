@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
 from app.config.chromadb import ChromaService
+from app.services.chat_history_service import get_chat_history_service, ChatHistoryService
 
 load_dotenv()
 
@@ -21,9 +22,9 @@ class LLMService:
         self.api_key: Optional[str] = os.getenv("GEMINI_API_KEY", "").strip() or None
         self.model_name: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
         self.provider: str = os.getenv("LLM_PROVIDER", "gemini").lower().strip()
-        
-        # In-memory thread state storage: thread_id -> state dict
-        self._threads: Dict[str, Dict[str, Any]] = {}
+
+        # Chat history persistence service backed by MongoDB
+        self.chat_history_service: ChatHistoryService = get_chat_history_service()
 
         # Vector database service (ChromaDB) for RAG
         self.chroma_service = ChromaService()
@@ -32,8 +33,8 @@ class LLMService:
         self.candidate_models: List[str] = [
             self.model_name,
             "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
             "gemini-3.1-flash-lite",
-            "gemini-2.5-flash-lite",
             "gemini-3.8-flash",
         ]
         # Remove duplicates while preserving order
@@ -56,51 +57,21 @@ class LLMService:
             logger.warning("Could not initialize google.genai: %s", exc)
             self.gemini_client = None
 
-    def get_thread_state(self, thread_id: str) -> Dict[str, Any]:
-        """Retrieve or initialize conversation state for a given thread_id."""
-        if thread_id not in self._threads:
-            self._threads[thread_id] = {
-                "thread_id": thread_id,
-                "history": [],
-                "awaiting": None,
-                "context": {
-                    "result": {},
-                    "username": "Admin",
-                },
-            }
-        return self._threads[thread_id]
+    async def get_thread_state(self, thread_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Retrieve or initialize conversation state from MongoDB for a given thread_id."""
+        return await self.chat_history_service.get_or_create_thread(thread_id, user_id)
 
-    def list_all_threads(self) -> List[Dict[str, Any]]:
-        """List all active conversation threads with summaries."""
-        result = []
-        for tid, data in self._threads.items():
-            history = data.get("history", [])
-            last_message = ""
-            if history:
-                last_turn = history[-1]
-                last_message = last_turn.get("user", "")
-            result.append({
-                "thread_id": tid,
-                "title": (last_message[:35] + "...") if len(last_message) > 35 else (last_message or "New Chat"),
-                "turns_count": len(history),
-            })
-        return result
+    async def list_all_threads(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List all active conversation threads from MongoDB."""
+        return await self.chat_history_service.list_threads(user_id)
 
-    def delete_message(self, thread_id: str, message_index: int) -> bool:
-        """Delete a particular message turn by index from a thread's history."""
-        if thread_id in self._threads:
-            history = self._threads[thread_id].get("history", [])
-            if 0 <= message_index < len(history):
-                history.pop(message_index)
-                return True
-        return False
+    async def delete_message(self, thread_id: str, message_index: int) -> bool:
+        """Delete a particular message turn by index from MongoDB."""
+        return await self.chat_history_service.delete_message(thread_id, message_index)
 
-    def clear_thread_state(self, thread_id: str) -> bool:
-        """Delete a particular chat thread and all its conversation memory."""
-        if thread_id in self._threads:
-            del self._threads[thread_id]
-            return True
-        return False
+    async def clear_thread_state(self, thread_id: str) -> bool:
+        """Delete a particular chat thread and all its conversation memory from MongoDB."""
+        return await self.chat_history_service.delete_thread(thread_id)
 
     async def generate_chat_turn(
         self,
@@ -108,9 +79,10 @@ class LLMService:
         user_text: str,
         channel: str = "rest",
         context: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
     ) -> Tuple[List[Dict[str, str]], Dict[str, Any], str, float, Dict[str, Any]]:
         """Process user message and generate bot_messages, entities, intent, confidence, and updated context."""
-        state = self.get_thread_state(thread_id)
+        state = await self.get_thread_state(thread_id, user_id)
 
         # Merge provided context
         merged_context = dict(state.get("context", {}))
@@ -139,9 +111,16 @@ class LLMService:
                 )
                 if gemini_result:
                     bot_msgs, entities, intent, confidence, ctx = gemini_result
-                    # Save to conversation history
-                    state["history"].append({"user": user_text, "bot": [m["text"] for m in bot_msgs]})
-                    state["context"] = ctx
+                    # Persist turn to MongoDB
+                    await self.chat_history_service.save_turn(
+                        thread_id=thread_id,
+                        user_text=user_text,
+                        bot_messages=bot_msgs,
+                        intent=intent,
+                        entities=entities,
+                        context=ctx,
+                        user_id=user_id,
+                    )
                     return bot_msgs, entities, intent, confidence, ctx
             except Exception as exc:
                 logger.warning("Gemini API call failed (%s), utilizing dynamic response engine.", exc)
@@ -156,8 +135,16 @@ class LLMService:
             retrieved_docs=retrieved_docs,
         )
 
-        state["history"].append({"user": user_text, "bot": [m["text"] for m in bot_msgs]})
-        state["context"] = ctx
+        # Persist turn to MongoDB
+        await self.chat_history_service.save_turn(
+            thread_id=thread_id,
+            user_text=user_text,
+            bot_messages=bot_msgs,
+            intent=intent,
+            entities=entities,
+            context=ctx,
+            user_id=user_id,
+        )
         return bot_msgs, entities, intent, confidence, ctx
 
     async def _call_gemini(
@@ -183,8 +170,8 @@ class LLMService:
 
         system_instruction = f"""You are an intelligent, conversational AI assistant communicating in real time with a human user in a chat interface and admin panel.
 Logged-in User: {username}
-Conversation History (previous turns): {json.dumps(history_summary)}
-Current State Context: {json.dumps(context)}
+Conversation History (previous turns): {json.dumps(history_summary, default=str)}
+Current State Context: {json.dumps(context, default=str)}
 
 VERIFIED KNOWLEDGE BASE CONTEXT (Retrieved from ChromaDB vector store):
 {kb_text or "No specific knowledge base context was retrieved for this turn."}
