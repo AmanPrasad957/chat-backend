@@ -50,6 +50,21 @@ async def post_chat_message(
     return await controller.handle_message(request, user_id=user_id)
 
 
+@router.post(
+    "/chat/stream",
+    status_code=status.HTTP_200_OK,
+    summary="Process user message and stream response token-by-token (SSE)",
+    description="Streams Gemini conversational tokens in real time via Server-Sent Events (SSE), then persists completed turn to MongoDB.",
+)
+def post_chat_message_stream(
+    request: ChatRequest,
+    controller: ChatController = Depends(get_chat_controller),
+    user_id: Optional[str] = Depends(get_optional_user_id),
+):
+    """Send a user message and receive real-time streamed tokens followed by final state."""
+    return controller.handle_message_stream(request, user_id=user_id)
+
+
 @router.get(
     "/chat/state/{thread_id}",
     summary="Retrieve current session state for a thread",

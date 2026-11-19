@@ -67,6 +67,35 @@ class ChatController:
 
         return response
 
+    def handle_message_stream(self, request: ChatRequest, user_id: Optional[str] = None):
+        """Process incoming chat message and stream tokens via Server-Sent Events (SSE)."""
+        from fastapi.responses import StreamingResponse
+
+        text = request.text or ""
+        thread_id = request.thread_id or "test-user"
+        channel = request.channel or "rest"
+        context = request.context or {}
+
+        logger.info("Processing streaming message for thread '%s' on channel '%s': %s", thread_id, channel, text)
+
+        generator = self.llm_service.generate_chat_turn_stream(
+            thread_id=thread_id,
+            user_text=text,
+            channel=channel,
+            context=context,
+            user_id=user_id,
+        )
+
+        return StreamingResponse(
+            generator,
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     async def get_thread_state(self, thread_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Fetch current thread state and context from MongoDB."""
         return await self.llm_service.get_thread_state(thread_id, user_id)

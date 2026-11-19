@@ -101,6 +101,7 @@ async def root():
         "ui": "/ui",
         "endpoints": {
             "chat": "POST /chat",
+            "chat_stream": "POST /chat/stream",
             "api_v1_chat": "POST /api/v1/chat",
             "knowledge": "GET /knowledge",
             "auth_register": "POST /auth/register",

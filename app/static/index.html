@@ -400,6 +400,7 @@
 
       container.appendChild(wrapper);
       container.scrollTop = container.scrollHeight;
+      return { wrapper, bubble };
     }
 
     async function deleteParticularMessage(element, index) {
@@ -564,7 +565,7 @@
       };
 
       try {
-        const response = await fetch("/chat", {
+        const response = await fetch("/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -576,17 +577,43 @@
           throw new Error(`HTTP Error ${response.status}`);
         }
 
-        const data = await response.json();
+        const botMsg = appendMessage("", false);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let accumulated = "";
 
-        // Render bot responses
-        if (data.bot_message && Array.isArray(data.bot_message)) {
-          data.bot_message.forEach(msg => {
-            appendMessage(msg.text || "", false);
-          });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
+
+          for (const block of blocks) {
+            const trimmed = block.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const jsonStr = trimmed.replace(/^data:\s*/, "");
+            if (!jsonStr) continue;
+
+            try {
+              const ev = JSON.parse(jsonStr);
+              if (ev.type === "token") {
+                accumulated += ev.delta || "";
+                if (botMsg && botMsg.bubble) {
+                  botMsg.bubble.innerHTML = accumulated;
+                  const container = document.getElementById("chat-messages");
+                  container.scrollTop = container.scrollHeight;
+                }
+              } else if (ev.type === "done") {
+                updateStateView(ev);
+              }
+            } catch (e) {
+              console.warn("SSE parse error", e);
+            }
+          }
         }
-
-        // Update JSON state view
-        updateStateView(data);
 
       } catch (err) {
         removeTypingIndicator();

@@ -3,8 +3,9 @@
 import os
 import re
 import json
+import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
 from app.config.chromadb import ChromaService
@@ -146,6 +147,150 @@ class LLMService:
             user_id=user_id,
         )
         return bot_msgs, entities, intent, confidence, ctx
+
+    async def generate_chat_turn_stream(
+        self,
+        thread_id: str,
+        user_text: str,
+        channel: str = "rest",
+        context: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Process user message and yield SSE events ('start', 'token', 'done').
+
+        Persists completed turn to MongoDB upon stream finish.
+        """
+        state = await self.get_thread_state(thread_id, user_id)
+
+        merged_context = dict(state.get("context", {}))
+        if context:
+            merged_context.update(context)
+        username = merged_context.get("username", "Admin")
+
+        # Query ChromaDB for semantic knowledge retrieval (RAG)
+        retrieved_docs = self.chroma_service.query_similar(user_text, n_results=2)
+        if retrieved_docs:
+            merged_context["retrieved_context"] = [
+                {"source": d["metadata"].get("source", "KB"), "title": d["metadata"].get("title", ""), "text": d["text"]}
+                for d in retrieved_docs
+            ]
+
+        # 1. Yield start event
+        yield f"data: {json.dumps({'type': 'start', 'thread_id': thread_id})}\n\n"
+
+        accumulated_text = ""
+        gemini_streamed_success = False
+
+        # 2. Try streaming from Gemini if client available
+        if self.gemini_client and self.provider == "gemini":
+            from google.genai import types
+
+            history_summary = state.get("history", [])[-6:]
+            kb_text = ""
+            if retrieved_docs:
+                kb_text = "\n".join([
+                    f"- [Source: {d['metadata'].get('source', 'KB')}] ({d['metadata'].get('title', '')}): {d['text']}"
+                    for d in retrieved_docs
+                ])
+
+            system_instruction = f"""You are an intelligent, conversational AI assistant communicating in real time with a human user.
+Logged-in User: {username}
+Conversation History (previous turns): {json.dumps(history_summary, default=str)}
+Current State Context: {json.dumps(context or {}, default=str)}
+
+VERIFIED KNOWLEDGE BASE CONTEXT (Retrieved from ChromaDB vector store):
+{kb_text or "No specific knowledge base context was retrieved for this turn."}
+
+INSTRUCTIONS:
+1. Provide a direct, intelligent, and accurate conversational response to the user.
+2. If order status is asked and an order number is given (e.g. ORD987124), state that it is Shipped and arriving in 2-3 business days. If not given, ask for order number.
+3. Use verified ChromaDB context when answering questions about policies or shipping.
+4. Output your answer directly as clear conversational text (do not output JSON).
+"""
+            prompt = f"""User message: "{user_text}"\n\nAssistant:"""
+
+            for model in self.candidate_models:
+                try:
+                    response_stream = self.gemini_client.models.generate_content_stream(
+                        model=model,
+                        contents=system_instruction + "\n\n" + prompt,
+                        config=types.GenerateContentConfig(
+                            temperature=0.7,
+                        ),
+                    )
+
+                    for chunk in response_stream:
+                        if chunk and chunk.text:
+                            accumulated_text += chunk.text
+                            yield f"data: {json.dumps({'type': 'token', 'delta': chunk.text})}\n\n"
+                            await asyncio.sleep(0.001)
+
+                    if accumulated_text.strip():
+                        gemini_streamed_success = True
+                        logger.info("Successfully streamed Gemini response using model '%s'", model)
+                        break
+                except Exception as stream_err:
+                    logger.warning("Streaming attempt with model '%s' failed: %s. Trying next...", model, stream_err)
+                    continue
+
+        # 3. Fallback streaming if Gemini was not available or failed
+        if not gemini_streamed_success:
+            bot_msgs, entities, intent, confidence, ctx = self._dynamic_fallback_engine(
+                thread_id=thread_id,
+                user_text=user_text,
+                username=username,
+                state=state,
+                context=merged_context,
+                retrieved_docs=retrieved_docs,
+            )
+            full_reply = " ".join([m.get("text", "") for m in bot_msgs])
+            accumulated_text = full_reply
+
+            # Stream words with smooth typing cadence
+            words = re.findall(r"\S+|\s+", full_reply)
+            for w in words:
+                yield f"data: {json.dumps({'type': 'token', 'delta': w})}\n\n"
+                await asyncio.sleep(0.015)
+        else:
+            bot_msgs = [{"text": accumulated_text}]
+            _, entities, intent, confidence, ctx = self._dynamic_fallback_engine(
+                thread_id=thread_id,
+                user_text=user_text,
+                username=username,
+                state=state,
+                context=merged_context,
+                retrieved_docs=retrieved_docs,
+            )
+
+        # 4. Persist completed turn to MongoDB
+        await self.chat_history_service.save_turn(
+            thread_id=thread_id,
+            user_text=user_text,
+            bot_messages=bot_msgs,
+            intent=intent,
+            entities=entities,
+            context=ctx,
+            user_id=user_id,
+        )
+
+        # 5. Yield done event
+        done_payload = {
+            "type": "done",
+            "thread_id": thread_id,
+            "user_message": {
+                "thread_id": thread_id,
+                "text": user_text,
+                "channel": channel,
+                "context": context or {},
+            },
+            "bot_message": bot_msgs,
+            "nlu": {
+                "entities": entities,
+                "intent": {"intent": intent, "confidence": confidence},
+            },
+            "context": ctx,
+        }
+        yield f"data: {json.dumps(done_payload, default=str)}\n\n"
 
     async def _call_gemini(
         self,
