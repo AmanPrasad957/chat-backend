@@ -205,20 +205,34 @@
           </button>
         </div>
 
-        <!-- Chat Input Form -->
+        <!-- Chat Input Form with Voice Dictation -->
         <div class="p-4 bg-white border-t border-slate-200">
-          <form id="chat-form" onsubmit="handleSend(event)" class="flex items-center gap-3">
-            <input
-              id="message-input"
-              type="text"
-              autocomplete="off"
-              placeholder="Type your message here"
-              class="flex-1 bg-white border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-sm rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition"
-            />
+          <form id="chat-form" onsubmit="handleSend(event)" class="flex items-center gap-2.5">
+            <div class="relative flex-1 flex items-center">
+              <input
+                id="message-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Type your message or click the mic to speak"
+                class="w-full bg-white border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-sm rounded-xl pl-4 pr-11 py-3 text-slate-800 placeholder-slate-400 outline-none transition"
+              />
+              <button
+                type="button"
+                id="mic-button"
+                onclick="toggleSpeechRecognition()"
+                class="absolute right-2 p-1.5 rounded-lg transition text-slate-400 hover:text-emerald-700 hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                title="Voice Input (Speech-to-Text)"
+              >
+                <!-- Mic Icon SVG -->
+                <svg id="mic-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </button>
+            </div>
             <button
               type="submit"
               id="send-button"
-              class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm px-6 py-3 rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer"
+              class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm px-6 py-3 rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer flex-shrink-0"
             >
               <span>Send</span>
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -226,6 +240,12 @@
               </svg>
             </button>
           </form>
+
+          <!-- Real-time Voice Listening Indicator -->
+          <div id="voice-indicator" class="hidden mt-2.5 flex items-center gap-2 text-xs text-rose-600 font-medium px-1 animate-pulse">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>Microphone active &bull; Listening to your voice... Speak clearly</span>
+          </div>
         </div>
 
       </section>
@@ -575,8 +595,105 @@
       }
     }
 
+    // ================= SPEECH RECOGNITION (VOICE INPUT) =================
+    let isListening = false;
+    let recognitionInstance = null;
+    let baseDictationText = "";
+
+    function toggleSpeechRecognition() {
+      const input = document.getElementById("message-input");
+
+      if (isListening) {
+        if (recognitionInstance) {
+          try { recognitionInstance.stop(); } catch (e) {}
+        }
+        stopListeningUI();
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Voice dictation (Web Speech API) is not supported in this browser. Please use Chrome, Edge, or Safari.");
+        return;
+      }
+
+      try {
+        recognitionInstance = new SpeechRecognition();
+        recognitionInstance.continuous = true;
+        recognitionInstance.interimResults = true;
+        recognitionInstance.lang = "en-US";
+
+        baseDictationText = input.value ? input.value.trim() + " " : "";
+
+        recognitionInstance.onstart = function() {
+          isListening = true;
+          startListeningUI();
+        };
+
+        recognitionInstance.onresult = function(event) {
+          let transcript = "";
+          for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          input.value = baseDictationText + transcript;
+        };
+
+        recognitionInstance.onerror = function(event) {
+          console.warn("Speech recognition error:", event.error);
+          if (event.error === "not-allowed") {
+            alert("Microphone permission was denied. Please allow microphone access in your browser settings.");
+          }
+          stopListeningUI();
+        };
+
+        recognitionInstance.onend = function() {
+          stopListeningUI();
+        };
+
+        recognitionInstance.start();
+      } catch (err) {
+        console.warn("Error starting speech recognition:", err);
+        stopListeningUI();
+      }
+    }
+
+    function startListeningUI() {
+      const micButton = document.getElementById("mic-button");
+      const indicator = document.getElementById("voice-indicator");
+      const input = document.getElementById("message-input");
+      if (micButton) {
+        micButton.className = "absolute right-2 p-1.5 rounded-lg bg-rose-500 text-white shadow-sm shadow-rose-200 animate-pulse cursor-pointer flex items-center justify-center";
+        micButton.title = "Listening... Click to stop voice input";
+      }
+      if (indicator) indicator.classList.remove("hidden");
+      if (input) {
+        input.classList.add("border-rose-400", "ring-2", "ring-rose-100");
+        input.placeholder = "Listening... Speak into your microphone";
+      }
+    }
+
+    function stopListeningUI() {
+      isListening = false;
+      const micButton = document.getElementById("mic-button");
+      const indicator = document.getElementById("voice-indicator");
+      const input = document.getElementById("message-input");
+      if (micButton) {
+        micButton.className = "absolute right-2 p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-slate-100 cursor-pointer flex items-center justify-center";
+        micButton.title = "Voice Input (Speech-to-Text)";
+      }
+      if (indicator) indicator.classList.add("hidden");
+      if (input) {
+        input.classList.remove("border-rose-400", "ring-2", "ring-rose-100");
+        input.placeholder = "Type your message or click the mic to speak";
+      }
+    }
+
     function handleSend(event) {
       event.preventDefault();
+      if (isListening && recognitionInstance) {
+        try { recognitionInstance.stop(); } catch (e) {}
+        stopListeningUI();
+      }
       const input = document.getElementById("message-input");
       const text = input.value;
       if (!text) return;
