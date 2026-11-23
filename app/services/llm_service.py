@@ -202,10 +202,11 @@ VERIFIED KNOWLEDGE BASE CONTEXT (Retrieved from ChromaDB vector store):
 {kb_text or "No specific knowledge base context was retrieved for this turn."}
 
 INSTRUCTIONS:
-1. Provide a direct, intelligent, and accurate conversational response to the user.
-2. If order status is asked and an order number is given (e.g. ORD987124), state that it is Shipped and arriving in 2-3 business days. If not given, ask for order number.
-3. Use verified ChromaDB context when answering questions about policies or shipping.
-4. Output your answer directly as clear conversational text (do not output JSON).
+1. LANGUAGE POLICY: This assistant exclusively supports English and Hindi (हिन्दी). All other languages are excluded. If the user writes or speaks in Hindi (Devanagari script or Hinglish), respond in natural Hindi using Devanagari script. If the user writes or speaks in English, respond in English. Match the user's language choice naturally.
+2. Provide a direct, intelligent, and accurate conversational response to the user.
+3. If order status is asked and an order number is given (e.g. ORD987124), state that it is Shipped and arriving in 2-3 business days. If not given, ask for order number.
+4. Use verified ChromaDB context when answering questions about policies or shipping.
+5. Output your answer directly as clear conversational text (do not output JSON).
 """
             prompt = f"""User message: "{user_text}"\n\nAssistant:"""
 
@@ -322,16 +323,17 @@ VERIFIED KNOWLEDGE BASE CONTEXT (Retrieved from ChromaDB vector store):
 {kb_text or "No specific knowledge base context was retrieved for this turn."}
 
 INSTRUCTIONS:
-1. Provide a direct, intelligent, and accurate answer to the user's specific question or statement. Do NOT give canned or static answers.
-2. If the user asks a question about policies, procedures, products, shipping, returns, or support, use the verified ChromaDB context above when relevant and cite the source.
-3. If the user asks about an order or shipment status:
+1. LANGUAGE POLICY: This assistant exclusively supports English and Hindi (हिन्दी). All other languages are excluded. If the user writes or speaks in Hindi (Devanagari script or Hinglish), respond in natural Hindi using Devanagari script. If the user writes or speaks in English, respond in English. Match the user's language choice naturally.
+2. Provide a direct, intelligent, and accurate answer to the user's specific question or statement. Do NOT give canned or static answers.
+3. If the user asks a question about policies, procedures, products, shipping, returns, or support, use the verified ChromaDB context above when relevant and cite the source.
+4. If the user asks about an order or shipment status:
    - If they provided an order number (e.g. ORD987124), extract it into entities.order_number, give confirmation, and provide status details with HTML tags like <b>Shipped</b> and estimated arrival.
    - If they did not provide an order number yet, politely ask for it.
-4. If the user greets you, greet them warmly by their username.
-5. Classify the user's intent accurately (e.g., question_answering, check_order_status, greeting, explanation_request, product_inquiry, general_chat).
-6. Assign a realistic confidence score between 0.0 and 1.0.
-7. Extract all relevant entities (topics, order numbers, dates, locations, products) as key-value pairs.
-8. Output ONLY valid JSON matching this schema:
+5. If the user greets you, greet them warmly by their username.
+6. Classify the user's intent accurately (e.g., question_answering, check_order_status, greeting, explanation_request, product_inquiry, general_chat).
+7. Assign a realistic confidence score between 0.0 and 1.0.
+8. Extract all relevant entities (topics, order numbers, dates, locations, products) as key-value pairs.
+9. Output ONLY valid JSON matching this schema:
 {{
   "intent": "<classified_intent>",
   "confidence": <confidence_float>,
@@ -421,11 +423,14 @@ INSTRUCTIONS:
         text_lower = user_text.lower().strip()
         entities: Dict[str, Any] = {}
         awaiting = state.get("awaiting")
+        is_hindi = bool(re.search(r"[\u0900-\u097F]", user_text)) or any(
+            w in text_lower for w in ["namaste", "pranam", "kya haal", "kaise ho", "dhanyawad", "shukriya"]
+        )
 
         # 0. Check if ChromaDB returned relevant knowledge base context
         if retrieved_docs and len(retrieved_docs) > 0:
             top_hit = retrieved_docs[0]
-            if any(k in text_lower for k in ["return", "refund", "shipping", "deliver", "hour", "contact", "policy", "standard"]):
+            if any(k in text_lower for k in ["return", "refund", "shipping", "deliver", "hour", "contact", "policy", "standard"]) or any(k in user_text for k in ["वापसी", "रिफंड", "शिपिंग", "डिलीवरी", "नीति"]):
                 intent = "knowledge_retrieval"
                 confidence = 0.94
                 bot_messages = [
@@ -448,63 +453,101 @@ INSTRUCTIONS:
             entities["order_number"] = extracted_num
             intent = "check_order_status"
             confidence = 0.6912927868354805
-            bot_messages = [
-                {"text": f" Let me check the status of order {extracted_num}"},
-                {"text": "\n Your order status is <b>Shipped</b> and is expected to arrive in 2-3 business days."},
-            ]
+            if is_hindi:
+                bot_messages = [
+                    {"text": f"ऑर्डर {extracted_num} की स्थिति जाँची जा रही है..."},
+                    {"text": f"\nआपके ऑर्डर की स्थिति <b>Shipped</b> है और यह 2-3 कार्यदिवसों में पहुँच जाएगा।"},
+                ]
+            else:
+                bot_messages = [
+                    {"text": f" Let me check the status of order {extracted_num}"},
+                    {"text": "\n Your order status is <b>Shipped</b> and is expected to arrive in 2-3 business days."},
+                ]
             context["result"] = {"order_number": extracted_num, "status": "Shipped", "eta": "2-3 business days"}
             context["username"] = username
             state["awaiting"] = None
             return bot_messages, entities, intent, confidence, context
 
         # 2. Inquiries about order status
-        if any(keyword in text_lower for keyword in ["order", "status", "track", "delivery", "shipping"]):
+        if any(keyword in text_lower for keyword in ["order", "status", "track", "delivery", "shipping"]) or any(keyword in user_text for keyword in ["ऑर्डर", "स्थिति", "डिलीवरी", "पार्सल"]):
             intent = "check_order_status"
             confidence = 0.75
-            bot_messages = [
-                {"text": "Sure"},
-                {"text": "Can you please give me your order number ?"},
-            ]
+            if is_hindi:
+                bot_messages = [
+                    {"text": "ज़रूर!"},
+                    {"text": "कृपया मुझे अपना ऑर्डर नंबर (Order Number) प्रदान करें?"},
+                ]
+            else:
+                bot_messages = [
+                    {"text": "Sure"},
+                    {"text": "Can you please give me your order number ?"},
+                ]
             state["awaiting"] = "order_number"
             context["result"] = {}
             context["username"] = username
             return bot_messages, entities, intent, confidence, context
 
         # 3. Greetings
-        if any(greet in text_lower for greet in ["hi", "hello", "hey", "good morning", "good afternoon"]):
+        if any(greet in text_lower for greet in ["hi", "hello", "hey", "good morning", "good afternoon"]) or any(
+            hg in user_text for hg in ["नमस्ते", "प्रणाम", "नमस्कार", "हेलो", "हाय"]
+        ) or any(hg in text_lower for hg in ["namaste", "pranam", "kya haal", "kaise ho"]):
             intent = "greeting"
             confidence = 0.985
-            bot_messages = [
-                {"text": f"Hi {username}"},
-                {"text": "What can i do for you ?"},
-            ]
+            if is_hindi:
+                bot_messages = [
+                    {"text": f"नमस्ते {username}!"},
+                    {"text": "मैं आपकी क्या सहायता कर सकता हूँ?"},
+                ]
+            else:
+                bot_messages = [
+                    {"text": f"Hi {username}"},
+                    {"text": "What can i do for you ?"},
+                ]
             context["result"] = {}
             context["username"] = username
             return bot_messages, entities, intent, confidence, context
 
         # 4. Questions about AI identity & capabilities
-        if any(q in text_lower for q in ["who are you", "what are you", "what can you do", "help me"]):
+        if any(q in text_lower for q in ["who are you", "what are you", "what can you do", "help me"]) or any(
+            q in user_text for q in ["आप कौन हैं", "तुम कौन हो", "क्या कर सकते हो", "मदद करो"]
+        ):
             intent = "bot_identity_inquiry"
             confidence = 0.92
-            bot_messages = [
-                {
-                    "text": f"I am your AI assistant powered by Google Gemini! You can ask me any question, discuss ideas, or track order statuses (e.g. by asking about order ORD987124)."
-                }
-            ]
+            if is_hindi:
+                bot_messages = [
+                    {
+                        "text": f"मैं Google Gemini द्वारा संचालित आपका AI सहायक हूँ! आप मुझसे हिंदी या English में कोई भी प्रश्न पूछ सकते हैं, ज्ञानकोष खोज सकते हैं, या अपने ऑर्डर की स्थिति (जैसे ORD987124) जान सकते हैं।"
+                    }
+                ]
+            else:
+                bot_messages = [
+                    {
+                        "text": f"I am your AI assistant powered by Google Gemini! You can ask me any question, discuss ideas, or track order statuses (e.g. by asking about order ORD987124)."
+                    }
+                ]
             context["result"] = {}
             context["username"] = username
             return bot_messages, entities, intent, confidence, context
 
         # 5. Question Answering detection (what, why, how, who, explain, tell me)
-        if any(text_lower.startswith(q) for q in ["what", "why", "how", "who", "when", "where", "can you", "explain", "tell me"]):
+        if any(text_lower.startswith(q) for q in ["what", "why", "how", "who", "when", "where", "can you", "explain", "tell me"]) or any(
+            user_text.startswith(q) for q in ["क्या", "क्यों", "कैसे", "कहाँ", "कब", "बताइए", "समझाएं"]
+        ):
             intent = "question_answering"
             confidence = 0.88
             entities["query"] = user_text
-            bot_messages = [
-                {
-                    "text": f"Regarding your question about '{user_text}': I am ready to explore this with you! Connect your Gemini API key in .env for live multi-turn reasoning on any topic."
-                }
-            ]
+            if is_hindi:
+                bot_messages = [
+                    {
+                        "text": f"आपके प्रश्न '{user_text}' के संबंध में: मैं आपकी सहायता के लिए तैयार हूँ! .env में Gemini API Key जोड़कर लाइव मल्टी-टर्न AI उत्तर प्राप्त करें।"
+                    }
+                ]
+            else:
+                bot_messages = [
+                    {
+                        "text": f"Regarding your question about '{user_text}': I am ready to explore this with you! Connect your Gemini API key in .env for live multi-turn reasoning on any topic."
+                    }
+                ]
             context["result"] = {}
             context["username"] = username
             return bot_messages, entities, intent, confidence, context
@@ -512,11 +555,18 @@ INSTRUCTIONS:
         # 6. General conversational reply tailored to user input
         intent = "general_conversation"
         confidence = 0.78
-        bot_messages = [
-            {
-                "text": f"I received your message: \"{user_text}\". How would you like to proceed or explore this topic further?"
-            }
-        ]
+        if is_hindi:
+            bot_messages = [
+                {
+                    "text": f"मुझे आपका संदेश प्राप्त हुआ: \"{user_text}\"। मैं इसमें आपकी किस प्रकार सहायता कर सकता हूँ?"
+                }
+            ]
+        else:
+            bot_messages = [
+                {
+                    "text": f"I received your message: \"{user_text}\". How would you like to proceed or explore this topic further?"
+                }
+            ]
         context["result"] = {}
         context["username"] = username
         return bot_messages, entities, intent, confidence, context
