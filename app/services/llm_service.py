@@ -30,16 +30,8 @@ class LLMService:
         # Vector database service (ChromaDB) for RAG
         self.chroma_service = ChromaService()
         
-        # Priority list of models to try in case of temporary rate limits or 503 load
-        self.candidate_models: List[str] = [
-            self.model_name,
-            "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.1-flash-lite",
-            "gemini-3.8-flash",
-        ]
-        # Remove duplicates while preserving order
-        self.candidate_models = list(dict.fromkeys(self.candidate_models))
+        # Active model to query
+        self.candidate_models: List[str] = [self.model_name or "gemini-3.5-flash"]
         
         self._init_gemini_client()
 
@@ -212,7 +204,8 @@ INSTRUCTIONS:
 
             for model in self.candidate_models:
                 try:
-                    response_stream = self.gemini_client.models.generate_content_stream(
+                    logger.info("Attempting async streaming with Gemini model '%s'...", model)
+                    stream = await self.gemini_client.aio.models.generate_content_stream(
                         model=model,
                         contents=system_instruction + "\n\n" + prompt,
                         config=types.GenerateContentConfig(
@@ -220,7 +213,14 @@ INSTRUCTIONS:
                         ),
                     )
 
-                    for chunk in response_stream:
+                    # Await the first chunk with a strict 3.5s timeout to guarantee zero hang
+                    first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=3.5)
+                    if first_chunk and first_chunk.text:
+                        accumulated_text += first_chunk.text
+                        yield f"data: {json.dumps({'type': 'token', 'delta': first_chunk.text})}\n\n"
+                        await asyncio.sleep(0.001)
+
+                    async for chunk in stream:
                         if chunk and chunk.text:
                             accumulated_text += chunk.text
                             yield f"data: {json.dumps({'type': 'token', 'delta': chunk.text})}\n\n"
@@ -230,6 +230,9 @@ INSTRUCTIONS:
                         gemini_streamed_success = True
                         logger.info("Successfully streamed Gemini response using model '%s'", model)
                         break
+                except (asyncio.TimeoutError, StopAsyncIteration):
+                    logger.warning("Streaming attempt with model '%s' timed out (>3.5s). Switching...", model)
+                    continue
                 except Exception as stream_err:
                     logger.warning("Streaming attempt with model '%s' failed: %s. Trying next...", model, stream_err)
                     continue
@@ -353,13 +356,16 @@ INSTRUCTIONS:
 
         for model in self.candidate_models:
             try:
-                response = self.gemini_client.models.generate_content(
-                    model=model,
-                    contents=system_instruction + "\n\n" + prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        temperature=0.7,
+                response = await asyncio.wait_for(
+                    self.gemini_client.aio.models.generate_content(
+                        model=model,
+                        contents=system_instruction + "\n\n" + prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            temperature=0.7,
+                        ),
                     ),
+                    timeout=3.5,
                 )
                 
                 response_text = response.text.strip() if response and response.text else ""

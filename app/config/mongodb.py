@@ -5,6 +5,7 @@ from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING
 
+
 logger = logging.getLogger("ai_chat_api.config.mongodb")
 
 client: Optional[AsyncIOMotorClient] = None
