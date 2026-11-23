@@ -184,8 +184,24 @@
         </div>
         <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Test your chatbot's responses in real-time</p>
       </div>
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 flex-wrap">
         
+        <!-- Auto-Speak Hands-Free Toggle -->
+        <button id="auto-tts-btn" onclick="toggleAutoTts()" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Auto-Speak: automatically read out bot responses when streaming finishes">
+          <svg id="auto-tts-icon" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 18v-6a9 9 0 0118 0v6M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z" />
+          </svg>
+          <span id="auto-tts-label">Auto-Speak: OFF</span>
+        </button>
+
+        <!-- Voice Speed Cycle Button -->
+        <button id="tts-speed-btn" onclick="cycleSpeechRate()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono font-semibold shadow-xs transition flex items-center gap-1 cursor-pointer" title="Click to cycle voice playback speed (1x, 1.25x, 1.5x, 0.75x)">
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/>
+          </svg>
+          <span id="tts-speed-label">1x</span>
+        </button>
+
         <!-- Delete Current Chat Button -->
         <button id="btn-delete-chat" onclick="deleteCurrentChat()" class="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Delete this particular chat">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -665,13 +681,13 @@
         bubble.className = "bg-blue-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm leading-relaxed shadow-sm";
         bubble.textContent = text;
       } else {
-        bubble.className = "bg-slate-100 text-slate-800 text-sm px-4 py-2.5 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm";
+        bubble.className = "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm px-4 py-2.5 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm";
         bubble.innerHTML = text;
       }
 
       // Delete button for this particular message
       const delBtn = document.createElement("button");
-      delBtn.className = "msg-delete-btn opacity-0 transition p-1 text-slate-400 hover:text-red-500 rounded-md hover:bg-slate-100 cursor-pointer";
+      delBtn.className = "msg-delete-btn opacity-0 transition p-1 text-slate-400 hover:text-red-500 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer";
       delBtn.title = "Delete this message";
       delBtn.innerHTML = `
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -684,8 +700,31 @@
         wrapper.appendChild(delBtn);
         wrapper.appendChild(bubble);
       } else {
+        const msgId = "msg-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6);
+        wrapper.dataset.msgId = msgId;
+
+        // Speaker / Read Aloud button
+        const ttsBtn = document.createElement("button");
+        ttsBtn.className = "msg-tts-btn opacity-0 group-hover:opacity-100 transition p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer";
+        ttsBtn.title = "Read aloud (Text-to-Speech)";
+        ttsBtn.innerHTML = `
+          <svg class="w-3.5 h-3.5 icon-volume-idle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/>
+          </svg>
+          <svg class="w-3.5 h-3.5 icon-volume-active hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+          </svg>
+        `;
+        ttsBtn.onclick = () => toggleSpeakMessage(msgId, bubble.innerText || bubble.textContent || text, ttsBtn);
+
+        const actionsDiv = document.createElement("div");
+        actionsDiv.className = "flex items-center gap-0.5";
+        actionsDiv.appendChild(ttsBtn);
+        actionsDiv.appendChild(delBtn);
+
         wrapper.appendChild(bubble);
-        wrapper.appendChild(delBtn);
+        wrapper.appendChild(actionsDiv);
       }
 
       container.appendChild(wrapper);
@@ -694,6 +733,7 @@
     }
 
     async function deleteParticularMessage(element, index) {
+      stopSpeaking();
       if (index !== null) {
         try {
           await authFetch(`/chat/${currentThreadId}/message/${index}`, { method: "DELETE" });
@@ -706,6 +746,7 @@
 
     async function deleteParticularChat(threadId, event) {
       if (event) event.stopPropagation();
+      stopSpeaking();
       
       try {
         await authFetch(`/chat/threads/${threadId}`, { method: "DELETE" });
@@ -743,6 +784,7 @@
     }
 
     async function switchChat(threadId) {
+      stopSpeaking();
       currentThreadId = threadId;
       renderThreadList();
 
@@ -906,6 +948,12 @@
           }
         }
 
+        // Auto-speak completed assistant response if enabled
+        if (autoTtsEnabled && accumulated.trim()) {
+          const ttsBtn = botMsg?.wrapper?.querySelector(".msg-tts-btn");
+          toggleSpeakMessage(botMsg?.wrapper?.dataset?.msgId || "bot-stream", accumulated, ttsBtn);
+        }
+
       } catch (err) {
         removeTypingIndicator();
         appendMessage(`<span class="text-red-500 font-medium">Error: Could not reach chatbot API (${err.message}).</span>`, false);
@@ -1006,6 +1054,160 @@
       }
     }
 
+    // ================= SPEECH SYNTHESIS (TEXT-TO-SPEECH) =================
+    let activeSpeakingId = null;
+    let activeSpeakingBtn = null;
+    let speechRate = 1.0;
+    let autoTtsEnabled = false;
+
+    function initTtsSettings() {
+      const savedRate = localStorage.getItem("chat_tts_speed");
+      if (savedRate) {
+        const parsed = parseFloat(savedRate);
+        if (!isNaN(parsed) && parsed > 0) speechRate = parsed;
+      }
+      const savedAuto = localStorage.getItem("chat_auto_tts");
+      if (savedAuto === "true") {
+        autoTtsEnabled = true;
+      }
+      updateTtsUI();
+    }
+
+    function updateTtsUI() {
+      const autoBtn = document.getElementById("auto-tts-btn");
+      const autoLabel = document.getElementById("auto-tts-label");
+      const autoIcon = document.getElementById("auto-tts-icon");
+      if (autoBtn && autoLabel) {
+        autoLabel.textContent = `Auto-Speak: ${autoTtsEnabled ? "ON" : "OFF"}`;
+        if (autoTtsEnabled) {
+          autoBtn.className = "px-3 py-1.5 rounded-lg border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer";
+          if (autoIcon) autoIcon.classList.add("text-emerald-600", "dark:text-emerald-400", "animate-pulse");
+        } else {
+          autoBtn.className = "px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer";
+          if (autoIcon) autoIcon.classList.remove("text-emerald-600", "dark:text-emerald-400", "animate-pulse");
+        }
+      }
+      const speedLabel = document.getElementById("tts-speed-label");
+      if (speedLabel) {
+        speedLabel.textContent = `${speechRate}x`;
+      }
+    }
+
+    function toggleAutoTts() {
+      autoTtsEnabled = !autoTtsEnabled;
+      localStorage.setItem("chat_auto_tts", autoTtsEnabled ? "true" : "false");
+      if (!autoTtsEnabled) stopSpeaking();
+      updateTtsUI();
+    }
+
+    function cycleSpeechRate() {
+      const rates = [1.0, 1.25, 1.5, 0.75];
+      const idx = rates.indexOf(speechRate);
+      speechRate = rates[(idx + 1) % rates.length];
+      localStorage.setItem("chat_tts_speed", speechRate.toString());
+      updateTtsUI();
+    }
+
+    function stripHtmlAndMarkdown(rawText) {
+      if (!rawText) return "";
+      let clean = rawText;
+      clean = clean.replace(/<[^>]*>/g, " ");
+      clean = clean.replace(/```[\s\S]*?```/g, " code block omitted ");
+      clean = clean.replace(/`([^`]+)`/g, "$1");
+      clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+      clean = clean.replace(/[*_~#]/g, "");
+      clean = clean.replace(/^>\s+/gm, "");
+      clean = clean.replace(/\s+/g, " ").trim();
+      return clean;
+    }
+
+    function stopSpeaking() {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (activeSpeakingBtn) {
+        resetSpeakingBtn(activeSpeakingBtn);
+      }
+      activeSpeakingId = null;
+      activeSpeakingBtn = null;
+    }
+
+    function resetSpeakingBtn(btn) {
+      if (!btn) return;
+      btn.classList.remove("opacity-100", "text-emerald-600", "dark:text-emerald-400", "bg-emerald-100/70", "dark:bg-emerald-950/70", "animate-pulse");
+      btn.classList.add("opacity-0", "group-hover:opacity-100", "text-slate-400");
+      btn.title = "Read aloud (Text-to-Speech)";
+      const idleIcon = btn.querySelector(".icon-volume-idle");
+      const activeIcon = btn.querySelector(".icon-volume-active");
+      if (idleIcon) idleIcon.classList.remove("hidden");
+      if (activeIcon) activeIcon.classList.add("hidden");
+    }
+
+    function setSpeakingBtnActive(btn) {
+      if (!btn) return;
+      btn.classList.remove("opacity-0", "group-hover:opacity-100", "text-slate-400");
+      btn.classList.add("opacity-100", "text-emerald-600", "dark:text-emerald-400", "bg-emerald-100/70", "dark:bg-emerald-950/70", "animate-pulse");
+      btn.title = "Stop reading aloud";
+      const idleIcon = btn.querySelector(".icon-volume-idle");
+      const activeIcon = btn.querySelector(".icon-volume-active");
+      if (idleIcon) idleIcon.classList.add("hidden");
+      if (activeIcon) activeIcon.classList.remove("hidden");
+    }
+
+    function toggleSpeakMessage(msgId, text, btn) {
+      if (!("speechSynthesis" in window)) {
+        alert("Text-to-Speech is not supported in this browser.");
+        return;
+      }
+
+      if (activeSpeakingId === msgId) {
+        stopSpeaking();
+        return;
+      }
+
+      stopSpeaking();
+
+      const cleanText = stripHtmlAndMarkdown(text);
+      if (!cleanText) return;
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = speechRate || 1.0;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      const naturalVoice = voices.find(
+        (v) =>
+          v.lang.startsWith("en") &&
+          (v.name.includes("Natural") ||
+            v.name.includes("Google") ||
+            v.name.includes("Samantha") ||
+            v.name.includes("Daniel") ||
+            v.name.includes("Karen") ||
+            v.name.includes("Microsoft"))
+      ) || voices.find((v) => v.lang.startsWith("en"));
+
+      if (naturalVoice) utterance.voice = naturalVoice;
+
+      utterance.onstart = () => {
+        activeSpeakingId = msgId;
+        activeSpeakingBtn = btn;
+        setSpeakingBtnActive(btn);
+      };
+
+      utterance.onend = () => {
+        stopSpeaking();
+      };
+
+      utterance.onerror = (e) => {
+        if (e.error !== "interrupted" && e.error !== "canceled") {
+          console.warn("TTS error:", e);
+        }
+        stopSpeaking();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
     function handleSend(event) {
       event.preventDefault();
       if (isListening && recognitionInstance) {
@@ -1024,6 +1226,7 @@
     }
 
     async function resetChat() {
+      stopSpeaking();
       try {
         await authFetch(`/chat/state/${currentThreadId}`, { method: "DELETE" });
       } catch (e) {
@@ -1291,6 +1494,7 @@
     // Initialize page & session
     async function initApp() {
       initThemeUI();
+      initTtsSettings();
       initChatUI();
       renderUserAccount();
       const token = getAccessToken();
