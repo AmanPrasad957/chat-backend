@@ -6,10 +6,29 @@
   <title>Admin Panel - Chat Interface</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('chat_theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    html.dark body {
+      background-color: #020617;
+      color: #f8fafc;
     }
     code, pre {
       font-family: 'JetBrains Mono', monospace;
@@ -28,16 +47,22 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
       background: #cbd5e1;
     }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
     .message-group:hover .msg-delete-btn {
       opacity: 1;
       visibility: visible;
     }
   </style>
 </head>
-<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col md:flex-row antialiased select-none md:select-auto">
+<body class="bg-[#f8fafc] dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col md:flex-row antialiased select-none md:select-auto">
 
   <!-- ================= LEFT SIDEBAR ================= -->
-  <aside class="w-full md:w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col justify-between py-6 px-4">
+  <aside class="w-full md:w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-shrink-0 flex flex-col justify-between py-6 px-4">
     <div>
       <!-- Brand Logo & Name -->
       <div class="flex items-center gap-3 px-3 mb-6">
@@ -152,17 +177,17 @@
     <header class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <div class="flex items-center gap-3">
-          <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Chat Interface</h1>
-          <span id="active-chat-badge" class="px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono font-medium">
+          <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Chat Interface</h1>
+          <span id="active-chat-badge" class="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono font-medium">
             test-user
           </span>
         </div>
-        <p class="text-slate-500 text-sm mt-1">Test your chatbot's responses in real-time</p>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Test your chatbot's responses in real-time</p>
       </div>
       <div class="flex items-center gap-2.5">
         
         <!-- Delete Current Chat Button -->
-        <button id="btn-delete-chat" onclick="deleteCurrentChat()" class="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/80 hover:bg-red-100 text-red-700 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Delete this particular chat">
+        <button id="btn-delete-chat" onclick="deleteCurrentChat()" class="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Delete this particular chat">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
@@ -170,9 +195,21 @@
         </button>
 
         <!-- New / Reset Chat Button -->
-        <button id="btn-reset" onclick="resetChat()" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 bg-white text-slate-700 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Reset this conversation">
+        <button id="btn-reset" onclick="resetChat()" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Reset this conversation">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           Reset Session
+        </button>
+
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle-btn" onclick="toggleTheme()" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Toggle Light/Dark Theme">
+          <svg id="theme-icon-sun" class="w-3.5 h-3.5 text-amber-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg id="theme-icon-moon" class="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+          <span id="theme-label">Dark</span>
         </button>
         
         <a href="/docs" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5">
@@ -186,7 +223,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start">
 
       <!-- ================= MIDDLE CHAT INTERFACE ================= -->
-      <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col h-[700px] overflow-hidden">
+      <section class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col h-[700px] overflow-hidden">
         
         <!-- Conversation Stream -->
         <div id="chat-messages" class="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
@@ -194,24 +231,24 @@
         </div>
 
         <!-- Quick Test Chips -->
-        <div class="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center gap-2">
+        <div class="px-5 py-2.5 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
           <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Quick Prompts:</span>
-          <button onclick="sendQuick('can you help to find the status of my order')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+          <button onclick="sendQuick('can you help to find the status of my order')" class="text-xs bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
             📦 "find the status of my order"
           </button>
-          <button onclick="sendQuick('it\'s ORD987124')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+          <button onclick="sendQuick('it\'s ORD987124')" class="text-xs bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
             🔑 "it's ORD987124"
           </button>
-          <button onclick="sendQuick('What is your return policy and refund window?')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+          <button onclick="sendQuick('What is your return policy and refund window?')" class="text-xs bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
             📚 "Return Policy"
           </button>
-          <button onclick="sendQuick('How long does standard shipping take?')" class="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
+          <button onclick="sendQuick('How long does standard shipping take?')" class="text-xs bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 px-2.5 py-1 rounded-full transition font-medium cursor-pointer">
             🚚 "Shipping Timeline"
           </button>
         </div>
 
         <!-- Chat Input Form with Voice Dictation & Document Upload -->
-        <div class="p-4 bg-white border-t border-slate-200">
+        <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
           <!-- Document Upload Status Toast -->
           <div id="upload-toast" class="hidden mb-3 px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition">
             <div class="flex items-center gap-2">
@@ -229,7 +266,7 @@
               type="button"
               id="file-upload-btn"
               onclick="document.getElementById('chat-file-input').click()"
-              class="p-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 hover:text-emerald-700 rounded-xl transition cursor-pointer flex items-center justify-center flex-shrink-0"
+              class="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl transition cursor-pointer flex items-center justify-center flex-shrink-0"
               title="Upload Document (PDF, TXT, CSV, MD, JSON) for RAG"
             >
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -250,13 +287,13 @@
                 type="text"
                 autocomplete="off"
                 placeholder="Type your message or click the mic to speak"
-                class="w-full bg-white border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-sm rounded-xl pl-4 pr-11 py-3 text-slate-800 placeholder-slate-400 outline-none transition"
+                class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900/40 text-sm rounded-xl pl-4 pr-11 py-3 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition"
               />
               <button
                 type="button"
                 id="mic-button"
                 onclick="toggleSpeechRecognition()"
-                class="absolute right-2 p-1.5 rounded-lg transition text-slate-400 hover:text-emerald-700 hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                class="absolute right-2 p-1.5 rounded-lg transition text-slate-400 hover:text-emerald-700 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center"
                 title="Voice Input (Speech-to-Text)"
               >
                 <!-- Mic Icon SVG -->
@@ -289,34 +326,34 @@
       <!-- ================= RIGHT COLUMN: CURRENT STATE ================= -->
       <section class="lg:col-span-5 flex flex-col h-[700px]">
         
-        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm flex-1 flex flex-col overflow-hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex-1 flex flex-col overflow-hidden">
           
           <!-- State Header -->
-          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
             <div class="flex items-center gap-2.5">
               <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-              <h2 class="text-base font-bold text-slate-900 tracking-tight">Current State</h2>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white tracking-tight">Current State</h2>
             </div>
             
             <div class="flex items-center gap-2">
-              <span id="intent-tag" class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+              <span id="intent-tag" class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 px-2 py-0.5 rounded-full">
                 intent: greeting
               </span>
-              <button onclick="copyState()" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition" title="Copy JSON state">
+              <button onclick="copyState()" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Copy JSON state">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
               </button>
             </div>
           </div>
 
           <!-- JSON State Viewer matching screenshot -->
-          <div class="flex-1 p-5 overflow-auto custom-scrollbar bg-slate-50/70 font-mono text-xs text-slate-800">
-            <pre id="state-json" class="whitespace-pre leading-relaxed select-text font-mono text-[12px] text-slate-800"></pre>
+          <div class="flex-1 p-5 overflow-auto custom-scrollbar bg-slate-50/70 dark:bg-slate-950/60 font-mono text-xs text-slate-800 dark:text-slate-200">
+            <pre id="state-json" class="whitespace-pre leading-relaxed select-text font-mono text-[12px] text-slate-800 dark:text-slate-200"></pre>
           </div>
 
           <!-- Bottom Footer Details -->
-          <div class="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 px-5">
-            <div>Thread: <span class="font-semibold text-slate-700" id="current-thread">test-user</span></div>
-            <div>Channel: <span class="font-semibold text-slate-700">rest</span></div>
+          <div class="p-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-5">
+            <div>Thread: <span class="font-semibold text-slate-700 dark:text-slate-300" id="current-thread">test-user</span></div>
+            <div>Channel: <span class="font-semibold text-slate-700 dark:text-slate-300">rest</span></div>
           </div>
 
         </div>
@@ -1226,8 +1263,34 @@
       }
     }
 
+    // Theme Management
+    function initThemeUI() {
+      const isDark = document.documentElement.classList.contains("dark");
+      const sunIcon = document.getElementById("theme-icon-sun");
+      const moonIcon = document.getElementById("theme-icon-moon");
+      const label = document.getElementById("theme-label");
+      if (sunIcon && moonIcon && label) {
+        if (isDark) {
+          sunIcon.classList.remove("hidden");
+          moonIcon.classList.add("hidden");
+          label.textContent = "Light";
+        } else {
+          sunIcon.classList.add("hidden");
+          moonIcon.classList.remove("hidden");
+          label.textContent = "Dark";
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle("dark");
+      localStorage.setItem("chat_theme", isDark ? "dark" : "light");
+      initThemeUI();
+    }
+
     // Initialize page & session
     async function initApp() {
+      initThemeUI();
       initChatUI();
       renderUserAccount();
       const token = getAccessToken();
@@ -1249,24 +1312,24 @@
   </script>
 
   <!-- ================= CHROMADB KNOWLEDGE BASE MODAL ================= -->
-  <div id="kb-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+  <div id="kb-modal" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
       
-      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
           </div>
           <div>
-            <h3 class="text-base font-bold text-slate-900">ChromaDB Vector Store</h3>
-            <p class="text-xs text-slate-500">Knowledge Base & Retrieval-Augmented Generation (RAG)</p>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">ChromaDB Vector Store</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Knowledge Base & Retrieval-Augmented Generation (RAG)</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <span id="kb-count-badge" class="text-xs bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full border border-blue-200">
+          <span id="kb-count-badge" class="text-xs bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-semibold px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-900/60">
             4 documents
           </span>
-          <button onclick="closeKnowledgeModal()" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <button onclick="closeKnowledgeModal()" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -1281,7 +1344,7 @@
           ondragleave="handleKbDragLeave(event)"
           ondrop="handleKbDrop(event)"
           onclick="document.getElementById('kb-file-input').click()"
-          class="border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/20 rounded-xl p-5 text-center cursor-pointer transition"
+          class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-400 bg-slate-50/70 dark:bg-slate-800/40 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 rounded-xl p-5 text-center cursor-pointer transition"
         >
           <input
             type="file"
@@ -1291,36 +1354,36 @@
             class="hidden"
           />
           <div class="flex flex-col items-center gap-1.5">
-            <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
               </svg>
             </div>
-            <p id="kb-dropzone-text" class="text-xs font-semibold text-slate-800">
+            <p id="kb-dropzone-text" class="text-xs font-semibold text-slate-800 dark:text-slate-200">
               Drag & drop document here or click to browse
             </p>
-            <p class="text-[11px] text-slate-400">
+            <p class="text-[11px] text-slate-400 dark:text-slate-500">
               Supports <b>PDF, TXT, Markdown (.md), CSV, JSON</b> (up to 15MB)
             </p>
           </div>
         </div>
 
         <div class="relative flex py-1 items-center">
-          <div class="flex-grow border-t border-slate-200"></div>
-          <span class="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+          <span class="flex-shrink mx-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             or enter text manually
           </span>
-          <div class="flex-grow border-t border-slate-200"></div>
+          <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
         </div>
 
         <!-- Add Document Form -->
-        <form onsubmit="handleAddKnowledge(event)" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-          <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Add Document to Vector Store</span>
+        <form onsubmit="handleAddKnowledge(event)" class="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">Add Document to Vector Store</span>
           <div class="grid grid-cols-2 gap-2">
-            <input id="kb-title-input" type="text" placeholder="Title (e.g. VIP Warranty)" class="text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 outline-none focus:border-emerald-500" />
-            <input id="kb-cat-input" type="text" placeholder="Category (e.g. warranty)" class="text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 outline-none focus:border-emerald-500" />
+            <input id="kb-title-input" type="text" placeholder="Title (e.g. VIP Warranty)" class="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-emerald-500" />
+            <input id="kb-cat-input" type="text" placeholder="Category (e.g. warranty)" class="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-emerald-500" />
           </div>
-          <textarea id="kb-text-input" rows="2" placeholder="Document content to embed into ChromaDB..." class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 outline-none focus:border-emerald-500"></textarea>
+          <textarea id="kb-text-input" rows="2" placeholder="Document content to embed into ChromaDB..." class="w-full text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-emerald-500"></textarea>
           <div class="flex justify-end">
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-xs cursor-pointer">
               Index into ChromaDB
@@ -1330,7 +1393,7 @@
 
         <!-- Document List -->
         <div>
-          <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">Indexed Documents</span>
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">Indexed Documents</span>
           <div id="kb-doc-list" class="space-y-2"></div>
         </div>
       </div>
@@ -1339,50 +1402,50 @@
   </div>
 
   <!-- ================= AUTHENTICATION MODAL ================= -->
-  <div id="auth-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-md flex flex-col overflow-hidden animate-in fade-in duration-150">
+  <div id="auth-modal" class="hidden fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-md flex flex-col overflow-hidden animate-in fade-in duration-150">
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-            <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
           <div>
-            <h3 id="auth-modal-title" class="text-base font-bold text-slate-900">Welcome Back</h3>
-            <p id="auth-modal-subtitle" class="text-xs text-slate-500">Sign in to access your saved chat threads</p>
+            <h3 id="auth-modal-title" class="text-base font-bold text-slate-900 dark:text-white">Welcome Back</h3>
+            <p id="auth-modal-subtitle" class="text-xs text-slate-500 dark:text-slate-400">Sign in to access your saved chat threads</p>
           </div>
         </div>
-        <button onclick="closeAuthModal()" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+        <button onclick="closeAuthModal()" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
       <!-- Tabs -->
-      <div class="flex border-b border-slate-100">
-        <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-3 text-xs font-bold transition text-center border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/40 cursor-pointer">Sign In</button>
-        <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-3 text-xs font-bold transition text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer">Register</button>
+      <div class="flex border-b border-slate-100 dark:border-slate-800">
+        <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-3 text-xs font-bold transition text-center border-b-2 border-emerald-600 text-emerald-800 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20 cursor-pointer">Sign In</button>
+        <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-3 text-xs font-bold transition text-center border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">Register</button>
       </div>
 
       <!-- Body -->
       <div class="p-6">
-        <div id="auth-error-box" class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700"></div>
+        <div id="auth-error-box" class="hidden mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300"></div>
 
         <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
           <div id="auth-name-group" class="hidden">
-            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Full Name (Optional)</label>
-            <input id="auth-fullname" type="text" placeholder="Jane Doe" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition" />
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Full Name (Optional)</label>
+            <input id="auth-fullname" type="text" placeholder="Jane Doe" class="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900/50 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
-            <input id="auth-email" type="email" required placeholder="user@example.com" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition" />
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
+            <input id="auth-email" type="email" required placeholder="user@example.com" class="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900/50 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
-            <input id="auth-password" type="password" required minlength="6" placeholder="••••••••" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition" />
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
+            <input id="auth-password" type="password" required minlength="6" placeholder="••••••••" class="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900/50 transition" />
           </div>
 
           <button id="auth-submit-btn" type="submit" class="w-full mt-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs transition shadow-sm cursor-pointer flex items-center justify-center gap-2">
@@ -1391,7 +1454,7 @@
         </form>
 
         <div class="mt-4 text-center">
-          <button id="auth-switch-link" type="button" onclick="toggleAuthTab()" class="text-xs text-emerald-700 hover:text-emerald-900 font-semibold cursor-pointer">
+          <button id="auth-switch-link" type="button" onclick="toggleAuthTab()" class="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 font-semibold cursor-pointer">
             Don't have an account? Sign up
           </button>
         </div>
