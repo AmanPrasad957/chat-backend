@@ -28,12 +28,11 @@ def test_root_endpoint():
 
 
 def test_ui_endpoint():
-    """Verify /ui endpoint serves the human-readable HTML interface."""
+    """Verify /ui endpoint provides information pointing to the frontend."""
     response = client.get("/ui")
     assert response.status_code == 200
-    assert "text/html" in response.headers.get("content-type", "")
-    assert "Chat Interface" in response.text
-    assert "Current State" in response.text
+    data = response.json()
+    assert "frontend" in data["message"].lower() or "frontend_url" in data
 
 
 def test_multi_turn_order_status_conversation():

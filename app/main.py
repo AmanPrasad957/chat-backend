@@ -7,8 +7,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.config.mongodb import connect_to_mongo, close_mongo_connection, check_mongo_health
@@ -72,33 +70,25 @@ app.include_router(auth_router)
 app.include_router(auth_router, prefix="/api/v1")
 
 
-# Static directory setup (fallback UI)
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-
-@app.get("/ui", tags=["UI"], response_class=HTMLResponse)
+@app.get("/ui", tags=["General"])
 async def serve_ui():
-    """Serve the human-readable Admin Panel Chat Interface."""
-    index_file = STATIC_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return HTMLResponse("<h1>Chat UI not found</h1>", status_code=404)
+    """Information endpoint indicating the UI is integrated into the Next.js frontend."""
+    return {
+        "message": "Chat UI is integrated into the frontend application.",
+        "frontend_url": os.getenv("FRONTEND_URL", "http://localhost:3000"),
+        "docs": "/docs",
+    }
 
 
 @app.get("/", tags=["General"])
 async def root():
-    """Root endpoint: serves the visual UI when opened in a browser, or returns service details."""
-    index_file = STATIC_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
+    """Root endpoint: returns service details and documentation links."""
     return {
         "service": "AI Chat API",
         "status": "online",
         "version": "1.0.0",
         "docs": "/docs",
-        "ui": "/ui",
+        "frontend": os.getenv("FRONTEND_URL", "http://localhost:3000"),
         "endpoints": {
             "chat": "POST /chat",
             "chat_stream": "POST /chat/stream",
