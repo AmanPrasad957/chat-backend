@@ -104,6 +104,7 @@ async def root():
             "chat_stream": "POST /chat/stream",
             "api_v1_chat": "POST /api/v1/chat",
             "knowledge": "GET /knowledge",
+            "knowledge_upload": "POST /knowledge/upload",
             "auth_register": "POST /auth/register",
             "auth_login": "POST /auth/login",
             "auth_refresh": "POST /auth/refresh",

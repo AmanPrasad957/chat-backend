@@ -210,9 +210,40 @@
           </button>
         </div>
 
-        <!-- Chat Input Form with Voice Dictation -->
+        <!-- Chat Input Form with Voice Dictation & Document Upload -->
         <div class="p-4 bg-white border-t border-slate-200">
+          <!-- Document Upload Status Toast -->
+          <div id="upload-toast" class="hidden mb-3 px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition">
+            <div class="flex items-center gap-2">
+              <span id="upload-toast-icon"></span>
+              <span id="upload-toast-text" class="font-medium"></span>
+            </div>
+            <button type="button" onclick="hideUploadToast()" class="p-1 hover:bg-black/5 rounded cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
           <form id="chat-form" onsubmit="handleSend(event)" class="flex items-center gap-2.5">
+            <!-- Paperclip Upload Button -->
+            <button
+              type="button"
+              id="file-upload-btn"
+              onclick="document.getElementById('chat-file-input').click()"
+              class="p-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 hover:text-emerald-700 rounded-xl transition cursor-pointer flex items-center justify-center flex-shrink-0"
+              title="Upload Document (PDF, TXT, CSV, MD, JSON) for RAG"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+              </svg>
+            </button>
+            <input
+              type="file"
+              id="chat-file-input"
+              accept=".pdf,.txt,.md,.csv,.json"
+              onchange="onChatFileSelected(event)"
+              class="hidden"
+            />
+
             <div class="relative flex-1 flex items-center">
               <input
                 id="message-input"
@@ -1070,6 +1101,131 @@
       }
     }
 
+    // ================= DOCUMENT UPLOAD (PDF, TXT, CSV, MD) =================
+    let isUploadingFile = false;
+
+    function showUploadToast(type, message) {
+      const toast = document.getElementById("upload-toast");
+      const icon = document.getElementById("upload-toast-icon");
+      const text = document.getElementById("upload-toast-text");
+      if (!toast) return;
+
+      toast.className = `mb-3 px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-between transition ${
+        type === "success"
+          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+          : type === "loading"
+          ? "bg-blue-50 text-blue-800 border border-blue-200"
+          : "bg-red-50 text-red-800 border border-red-200"
+      }`;
+
+      if (type === "success") {
+        icon.innerHTML = `<svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+      } else if (type === "loading") {
+        icon.innerHTML = `<svg class="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>`;
+      } else {
+        icon.innerHTML = `<svg class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"></circle><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2"></line><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2"></line></svg>`;
+      }
+
+      text.textContent = message;
+      toast.classList.remove("hidden");
+    }
+
+    function hideUploadToast() {
+      const toast = document.getElementById("upload-toast");
+      if (toast) toast.classList.add("hidden");
+    }
+
+    function onChatFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) {
+        uploadDocument(file);
+        event.target.value = "";
+      }
+    }
+
+    function onKbFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) {
+        uploadDocument(file);
+        event.target.value = "";
+      }
+    }
+
+    function handleKbDragOver(event) {
+      event.preventDefault();
+      const dropzone = document.getElementById("kb-dropzone");
+      if (dropzone) dropzone.classList.add("border-emerald-500", "bg-emerald-50/60");
+    }
+
+    function handleKbDragLeave(event) {
+      const dropzone = document.getElementById("kb-dropzone");
+      if (dropzone) dropzone.classList.remove("border-emerald-500", "bg-emerald-50/60");
+    }
+
+    function handleKbDrop(event) {
+      event.preventDefault();
+      handleKbDragLeave(event);
+      if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+        uploadDocument(event.dataTransfer.files[0]);
+      }
+    }
+
+    async function uploadDocument(file) {
+      if (!file) return;
+
+      const supportedExts = [".pdf", ".txt", ".md", ".csv", ".json"];
+      const fileExt = "." + file.name.split(".").pop().toLowerCase();
+      if (!supportedExts.includes(fileExt)) {
+        showUploadToast("error", `Unsupported file type (${fileExt}). Please upload .pdf, .txt, .md, .csv, or .json.`);
+        return;
+      }
+
+      if (file.size > 15 * 1024 * 1024) {
+        showUploadToast("error", "File exceeds 15MB maximum size limit.");
+        return;
+      }
+
+      isUploadingFile = true;
+      showUploadToast("loading", `Uploading & indexing "${file.name}" into ChromaDB...`);
+
+      const dropText = document.getElementById("kb-dropzone-text");
+      if (dropText) dropText.textContent = "Extracting & indexing document into ChromaDB...";
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("category", "user_documents");
+
+        const res = await authFetch("/knowledge/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Failed to upload document.");
+        }
+
+        showUploadToast("success", `Indexed "${data.filename}" (${data.total_chunks} chunks stored in ChromaDB)!`);
+
+        appendMessage(
+          `📄 <b>Document Uploaded:</b> <i>${data.filename}</i> (${data.total_chunks} chunk(s) indexed into ChromaDB vector store). You can now ask questions about this document!`,
+          false
+        );
+
+        await loadKnowledgeDocuments();
+
+        setTimeout(() => {
+          hideUploadToast();
+        }, 5000);
+      } catch (err) {
+        showUploadToast("error", err.message || "Failed to process document upload.");
+      } finally {
+        isUploadingFile = false;
+        if (dropText) dropText.textContent = "Drag & drop document here or click to browse";
+      }
+    }
+
     // Initialize page & session
     async function initApp() {
       initChatUI();
@@ -1118,6 +1274,45 @@
 
       <!-- Modal Body -->
       <div class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+        <!-- Drag & Drop File Upload Zone -->
+        <div
+          id="kb-dropzone"
+          ondragover="handleKbDragOver(event)"
+          ondragleave="handleKbDragLeave(event)"
+          ondrop="handleKbDrop(event)"
+          onclick="document.getElementById('kb-file-input').click()"
+          class="border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/20 rounded-xl p-5 text-center cursor-pointer transition"
+        >
+          <input
+            type="file"
+            id="kb-file-input"
+            accept=".pdf,.txt,.md,.csv,.json"
+            onchange="onKbFileSelected(event)"
+            class="hidden"
+          />
+          <div class="flex flex-col items-center gap-1.5">
+            <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+            </div>
+            <p id="kb-dropzone-text" class="text-xs font-semibold text-slate-800">
+              Drag & drop document here or click to browse
+            </p>
+            <p class="text-[11px] text-slate-400">
+              Supports <b>PDF, TXT, Markdown (.md), CSV, JSON</b> (up to 15MB)
+            </p>
+          </div>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            or enter text manually
+          </span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
         <!-- Add Document Form -->
         <form onsubmit="handleAddKnowledge(event)" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
           <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Add Document to Vector Store</span>

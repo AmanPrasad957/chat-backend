@@ -1,9 +1,10 @@
 """FastAPI route definitions for ChromaDB Vector Database and Knowledge Base management."""
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from app.config.chromadb import ChromaService, get_chroma_db
+from app.services.document_parser import DocumentParserService, SUPPORTED_EXTENSIONS
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Base (ChromaDB)"])
 
@@ -74,6 +75,90 @@ async def add_knowledge(
         "message": "Document indexed successfully in ChromaDB.",
         "doc_id": doc_ids[0] if doc_ids else None,
     }
+
+
+@router.post(
+    "/upload",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload and index document into ChromaDB",
+    description="Parses PDF, TXT, MD, CSV, or JSON, splits into overlapping chunks, and embeds into ChromaDB for RAG.",
+)
+async def upload_document(
+    file: UploadFile = File(..., description="Document file to parse and index (.pdf, .txt, .md, .csv, .json)"),
+    category: Optional[str] = Form(default="documents", description="Category tag for filtering"),
+    title: Optional[str] = Form(default=None, description="Optional custom document title"),
+    chunk_size: int = Form(default=600, description="Maximum characters per chunk"),
+    chunk_overlap: int = Form(default=80, description="Overlapping characters between adjacent chunks"),
+    chroma: ChromaService = Depends(get_chroma_service),
+) -> Dict[str, Any]:
+    """Parse an uploaded file into semantic text chunks and index into ChromaDB."""
+    filename = file.filename or "uploaded_file"
+    if not DocumentParserService.is_supported(filename):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file format '{filename}'. Allowed formats: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+        )
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+
+    # 15MB limit check
+    if len(file_bytes) > 15 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds the 15MB limit.",
+        )
+
+    try:
+        extracted_text, metadata = DocumentParserService.extract_text(file_bytes, filename)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to parse document: {str(exc)}",
+        )
+
+    if not extracted_text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not extract any readable text from the uploaded document.",
+        )
+
+    chunks = DocumentParserService.chunk_text(
+        text=extracted_text,
+        chunk_size=max(200, min(chunk_size, 2000)),
+        overlap=max(0, min(chunk_overlap, 300)),
+    )
+
+    doc_title = title or filename
+    total_chunks = len(chunks)
+    metadatas = []
+    for i in range(total_chunks):
+        chunk_meta = {
+            "title": f"{doc_title} (Part {i+1}/{total_chunks})" if total_chunks > 1 else doc_title,
+            "category": category or "documents",
+            "source": filename,
+            "chunk_index": i + 1,
+            "total_chunks": total_chunks,
+            "file_type": metadata.get("file_type", "unknown"),
+        }
+        metadatas.append(chunk_meta)
+
+    doc_ids = chroma.add_documents(documents=chunks, metadatas=metadatas)
+
+    return {
+        "status": "success",
+        "message": f"Successfully parsed '{filename}' into {total_chunks} chunk(s) and indexed into ChromaDB vector store.",
+        "filename": filename,
+        "file_type": metadata.get("file_type", "unknown"),
+        "total_chunks": total_chunks,
+        "doc_ids": doc_ids,
+        "stats": chroma.get_stats(),
+    }
+
 
 
 @router.post(

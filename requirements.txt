@@ -9,3 +9,5 @@ chromadb>=1.5.0
 motor>=3.6.0
 pyjwt[crypto]>=2.9.0
 bcrypt>=4.0.0
+python-multipart>=0.0.12
+pypdf>=4.3.0
